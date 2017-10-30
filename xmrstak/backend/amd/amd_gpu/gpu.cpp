@@ -432,8 +432,16 @@ uint32_t getNumPlatforms()
 
 	// Get platform and device information
 	clStatus = clGetPlatformIDs(0, NULL, &num_platforms);
+	if(clStatus != CL_SUCCESS)
+	{
+		printer::inst()->print_msg(L0,"error num getNumPlatforms clGetPlatformIDs %d", (int)clStatus);
+	}
 	platforms = (cl_platform_id *) malloc(sizeof(cl_platform_id) * num_platforms);
 	clStatus = clGetPlatformIDs(num_platforms, platforms, NULL);
+	if(clStatus != CL_SUCCESS)
+	{
+		printer::inst()->print_msg(L0,"error getNumPlatforms clGetPlatformIDs %d", (int)clStatus);
+	}
 
 	return num_platforms;
 }
@@ -451,10 +459,22 @@ std::vector<GpuContext> getAMDDevices(int index)
 
     platforms = (cl_platform_id *) malloc(sizeof(cl_platform_id) * numPlatforms);
     clStatus = clGetPlatformIDs(numPlatforms, platforms, NULL);
+	if(clStatus != CL_SUCCESS)
+	{
+		printer::inst()->print_msg(L0,"error clGetPlatformIDs %d", (int)clStatus);
+	}
 
 	clStatus = clGetDeviceIDs( platforms[index], CL_DEVICE_TYPE_GPU, 0, NULL, &num_devices);
+	if(clStatus != CL_SUCCESS)
+	{
+		printer::inst()->print_msg(L0,"error CL_DEVICE_TYPE_GPU %d", (int)clStatus);
+	}
 	device_list = (cl_device_id *) malloc(sizeof(cl_device_id)*num_devices);
 	clStatus = clGetDeviceIDs( platforms[index], CL_DEVICE_TYPE_GPU, num_devices, device_list, NULL);
+	if(clStatus != CL_SUCCESS)
+	{
+		printer::inst()->print_msg(L0,"error CL_DEVICE_TYPE_GPU numdev %d", (int)clStatus);
+	}
 	for (int k = 0; k < num_devices; k++) {
 		cl_int clError;
 		std::vector<char> devVendorVec(1024);
@@ -467,7 +487,16 @@ std::vector<GpuContext> getAMDDevices(int index)
 			clError = clGetDeviceInfo(device_list[k], CL_DEVICE_MAX_COMPUTE_UNITS, sizeof(int), &(ctx.computeUnits), NULL);
 			size_t maxMem;
 			clError = clGetDeviceInfo(device_list[k], CL_DEVICE_MAX_MEM_ALLOC_SIZE, sizeof(size_t), &(maxMem), NULL);
+			if(clError != CL_SUCCESS)
+			{
+				printer::inst()->print_msg(L0,"error CL_DEVICE_MAX_MEM_ALLOC_SIZE %d", (int)clError);
+			}
 			clError = clGetDeviceInfo(device_list[k], CL_DEVICE_GLOBAL_MEM_SIZE, sizeof(size_t), &(ctx.freeMem), NULL);
+			if(clError != CL_SUCCESS)
+			{
+				printer::inst()->print_msg(L0,"error CL_DEVICE_GLOBAL_MEM_SIZE %d", (int)clError);
+			}
+			std::cout<<"CL_DEVICE_MAX_MEM_ALLOC_SIZE = "<< maxMem <<" size="<< sizeof(size_t) << " CL_DEVICE_GLOBAL_MEM_SIZE = " << ctx.freeMem << std::endl;
 			// if environment variable GPU_SINGLE_ALLOC_PERCENT is not set we can not allocate the full memory
 			ctx.freeMem = std::min(ctx.freeMem, maxMem);
 			std::vector<char> devNameVec(1024);
