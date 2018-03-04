@@ -239,10 +239,10 @@ size_t InitOpenCLGpu(cl_context opencl_ctx, GpuContext* ctx, const char* source_
 	printer::inst()->print_msg(L1,"Device %lu work size %lu / %lu.", ctx->deviceIdx, ctx->workSize, MaximumWorkSize);
 #if defined(CL_VERSION_2_0) && !defined(CONF_ENFORCE_OpenCL_1_2)
 	const cl_queue_properties CommandQueueProperties[] = { 0, 0, 0 };
-	ctx->CommandQueues = clCreateCommandQueueWithProperties(opencl_ctx, ctx->DeviceID, CommandQueueProperties, &ret);
+	ctx->CommandQueues = clCreateCommandQueueWithProperties(opencl_ctx, ctx->DeviceID, NULL, &ret);
 #else
 	const cl_command_queue_properties CommandQueueProperties = { 0 };
-	ctx->CommandQueues = clCreateCommandQueue(opencl_ctx, ctx->DeviceID, CommandQueueProperties, &ret);
+	ctx->CommandQueues = clCreateCommandQueue(opencl_ctx, ctx->DeviceID, NULL, &ret);
 #endif
 	printer::inst()->print_msg(L1,"Yes we can 18");
 	if(ret != CL_SUCCESS)
