@@ -89,6 +89,7 @@ bool minethd::init_gpus()
 	printer::inst()->print_msg(L1, "Compiling code and initializing GPUs. This will take a while...");
 	vGpuData.resize(n);
 
+	printer::inst()->print_msg(L1,"Yes we can 1");
 	jconf::thd_cfg cfg;
 	for(i = 0; i < n; i++)
 	{
@@ -101,6 +102,7 @@ bool minethd::init_gpus()
 		vGpuData[i].compMode = cfg.compMode;
 	}
 
+	printer::inst()->print_msg(L1,"Yes we can 2");
 	return InitOpenCL(vGpuData.data(), n, jconf::inst()->GetPlatformIdx()) == ERR_SUCCESS;
 }
 

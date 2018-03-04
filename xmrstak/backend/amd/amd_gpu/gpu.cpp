@@ -224,11 +224,13 @@ size_t InitOpenCLGpu(cl_context opencl_ctx, GpuContext* ctx, const char* source_
 	size_t MaximumWorkSize;
 	cl_int ret;
 
+	printer::inst()->print_msg(L1,"Yes we can 16");
 	if((ret = clGetDeviceInfo(ctx->DeviceID, CL_DEVICE_MAX_WORK_GROUP_SIZE, sizeof(size_t), &MaximumWorkSize, NULL)) != CL_SUCCESS)
 	{
 		printer::inst()->print_msg(L1,"Error %s when querying a device's max worksize using clGetDeviceInfo.", err_to_str(ret));
 		return ERR_OCL_API;
 	}
+	printer::inst()->print_msg(L1,"Yes we can 17");
 
 	/* Some kernel spawn 8 times more threads than the user is configuring.
 	 * To give the user the correct maximum work size we divide the hardware specific max by 8.
@@ -242,20 +244,20 @@ size_t InitOpenCLGpu(cl_context opencl_ctx, GpuContext* ctx, const char* source_
 	const cl_command_queue_properties CommandQueueProperties = { 0 };
 	ctx->CommandQueues = clCreateCommandQueue(opencl_ctx, ctx->DeviceID, CommandQueueProperties, &ret);
 #endif
-
+	printer::inst()->print_msg(L1,"Yes we can 18");
 	if(ret != CL_SUCCESS)
 	{
 		printer::inst()->print_msg(L1,"Error %s when calling clCreateCommandQueueWithProperties.", err_to_str(ret));
 		return ERR_OCL_API;
 	}
-
+	printer::inst()->print_msg(L1,"Yes we can 18");
 	ctx->InputBuffer = clCreateBuffer(opencl_ctx, CL_MEM_READ_ONLY, 88, NULL, &ret);
 	if(ret != CL_SUCCESS)
 	{
 		printer::inst()->print_msg(L1,"Error %s when calling clCreateBuffer to create input buffer.", err_to_str(ret));
 		return ERR_OCL_API;
 	}
-
+	printer::inst()->print_msg(L1,"Yes we can 19");
 	size_t hashMemSize;
 	int threadMemMask;
 	int hasIterations;
@@ -279,14 +281,14 @@ size_t InitOpenCLGpu(cl_context opencl_ctx, GpuContext* ctx, const char* source_
 		printer::inst()->print_msg(L1,"Error %s when calling clCreateBuffer to create hash scratchpads buffer.", err_to_str(ret));
 		return ERR_OCL_API;
 	}
-
+	printer::inst()->print_msg(L1,"Yes we can 20");
 	ctx->ExtraBuffers[1] = clCreateBuffer(opencl_ctx, CL_MEM_READ_WRITE, 200 * g_thd, NULL, &ret);
 	if(ret != CL_SUCCESS)
 	{
 		printer::inst()->print_msg(L1,"Error %s when calling clCreateBuffer to create hash states buffer.", err_to_str(ret));
 		return ERR_OCL_API;
 	}
-
+	printer::inst()->print_msg(L1,"Yes we can 21");
 	// Blake-256 branches
 	ctx->ExtraBuffers[2] = clCreateBuffer(opencl_ctx, CL_MEM_READ_WRITE, sizeof(cl_uint) * (g_thd + 2), NULL, &ret);
 	if(ret != CL_SUCCESS)
@@ -294,7 +296,7 @@ size_t InitOpenCLGpu(cl_context opencl_ctx, GpuContext* ctx, const char* source_
 		printer::inst()->print_msg(L1,"Error %s when calling clCreateBuffer to create Branch 0 buffer.", err_to_str(ret));
 		return ERR_OCL_API;
 	}
-
+	printer::inst()->print_msg(L1,"Yes we can 22");
 	// Groestl-256 branches
 	ctx->ExtraBuffers[3] = clCreateBuffer(opencl_ctx, CL_MEM_READ_WRITE, sizeof(cl_uint) * (g_thd + 2), NULL, &ret);
 	if(ret != CL_SUCCESS)
@@ -302,7 +304,7 @@ size_t InitOpenCLGpu(cl_context opencl_ctx, GpuContext* ctx, const char* source_
 		printer::inst()->print_msg(L1,"Error %s when calling clCreateBuffer to create Branch 1 buffer.", err_to_str(ret));
 		return ERR_OCL_API;
 	}
-
+	printer::inst()->print_msg(L1,"Yes we can 23");
 	// JH-256 branches
 	ctx->ExtraBuffers[4] = clCreateBuffer(opencl_ctx, CL_MEM_READ_WRITE, sizeof(cl_uint) * (g_thd + 2), NULL, &ret);
 	if(ret != CL_SUCCESS)
@@ -310,7 +312,7 @@ size_t InitOpenCLGpu(cl_context opencl_ctx, GpuContext* ctx, const char* source_
 		printer::inst()->print_msg(L1,"Error %s when calling clCreateBuffer to create Branch 2 buffer.", err_to_str(ret));
 		return ERR_OCL_API;
 	}
-
+	printer::inst()->print_msg(L1,"Yes we can 24");
 	// Skein-512 branches
 	ctx->ExtraBuffers[5] = clCreateBuffer(opencl_ctx, CL_MEM_READ_WRITE, sizeof(cl_uint) * (g_thd + 2), NULL, &ret);
 	if(ret != CL_SUCCESS)
@@ -318,7 +320,7 @@ size_t InitOpenCLGpu(cl_context opencl_ctx, GpuContext* ctx, const char* source_
 		printer::inst()->print_msg(L1,"Error %s when calling clCreateBuffer to create Branch 3 buffer.", err_to_str(ret));
 		return ERR_OCL_API;
 	}
-
+	printer::inst()->print_msg(L1,"Yes we can 25");
 	// Assume we may find up to 0xFF nonces in one run - it's reasonable
 	ctx->OutputBuffer = clCreateBuffer(opencl_ctx, CL_MEM_READ_WRITE, sizeof(cl_uint) * 0x100, NULL, &ret);
 	if(ret != CL_SUCCESS)
@@ -326,6 +328,7 @@ size_t InitOpenCLGpu(cl_context opencl_ctx, GpuContext* ctx, const char* source_
 		printer::inst()->print_msg(L1,"Error %s when calling clCreateBuffer to create output buffer.", err_to_str(ret));
 		return ERR_OCL_API;
 	}
+	printer::inst()->print_msg(L1,"Yes we can 26");
 
 	ctx->Program = clCreateProgramWithSource(opencl_ctx, 1, (const char**)&source_code, NULL, &ret);
 	if(ret != CL_SUCCESS)
@@ -333,12 +336,14 @@ size_t InitOpenCLGpu(cl_context opencl_ctx, GpuContext* ctx, const char* source_
 		printer::inst()->print_msg(L1,"Error %s when calling clCreateProgramWithSource on the contents of cryptonight.cl", err_to_str(ret));
 		return ERR_OCL_API;
 	}
+	printer::inst()->print_msg(L1,"Yes we can 27");
 
 	char options[256];
 	snprintf(options, sizeof(options), 
 		"-DITERATIONS=%d -DMASK=%d -DWORKSIZE=%llu -DSTRIDED_INDEX=%d -DMEM_CHUNK_EXPONENT=%d  -DCOMP_MODE=%d",
 		hasIterations, threadMemMask, int_port(ctx->workSize), ctx->stridedIndex, int(1u<<ctx->memChunk), ctx->compMode ? 1 : 0);
 	ret = clBuildProgram(ctx->Program, 1, &ctx->DeviceID, options, NULL, NULL);
+	printer::inst()->print_msg(L1,"Yes we can 28");
 	if(ret != CL_SUCCESS)
 	{
 		size_t len;
@@ -367,28 +372,35 @@ size_t InitOpenCLGpu(cl_context opencl_ctx, GpuContext* ctx, const char* source_
 		return ERR_OCL_API;
 	}
 
+	printer::inst()->print_msg(L1,"Yes we can 29");
 	cl_build_status status;
 	do
 	{
+		printer::inst()->print_msg(L1,"Yes we can 30");
 		if((ret = clGetProgramBuildInfo(ctx->Program, ctx->DeviceID, CL_PROGRAM_BUILD_STATUS, sizeof(cl_build_status), &status, NULL)) != CL_SUCCESS)
 		{
 			printer::inst()->print_msg(L1,"Error %s when calling clGetProgramBuildInfo for status of build.", err_to_str(ret));
 			return ERR_OCL_API;
 		}
+		printer::inst()->print_msg(L1,"Yes we can 31");
 		port_sleep(1);
 	}
 	while(status == CL_BUILD_IN_PROGRESS);
 
+	printer::inst()->print_msg(L1,"Yes we can 32");
 	const char *KernelNames[] = { "cn0", "cn1", "cn2", "Blake", "Groestl", "JH", "Skein" };
 	for(int i = 0; i < 7; ++i)
 	{
+		printer::inst()->print_msg(L1,"Yes we can 33");
 		ctx->Kernels[i] = clCreateKernel(ctx->Program, KernelNames[i], &ret);
 		if(ret != CL_SUCCESS)
 		{
 			printer::inst()->print_msg(L1,"Error %s when calling clCreateKernel for kernel %s.", err_to_str(ret), KernelNames[i]);
 			return ERR_OCL_API;
 		}
+		printer::inst()->print_msg(L1,"Yes we can 34");
 	}
+	printer::inst()->print_msg(L1,"Yes we can 35");
 
 	ctx->Nonce = 0;
 	return 0;
@@ -606,12 +618,13 @@ size_t InitOpenCL(GpuContext* ctx, size_t num_gpus, size_t platform_idx)
 	cl_int ret;
 	cl_uint entries;
 
+	printer::inst()->print_msg(L1,"Yes we can 3");
 	if((ret = clGetPlatformIDs(0, NULL, &entries)) != CL_SUCCESS)
 	{
 		printer::inst()->print_msg(L1,"Error %s when calling clGetPlatformIDs for number of platforms.", err_to_str(ret));
 		return ERR_OCL_API;
 	}
-
+	printer::inst()->print_msg(L1,"Yes we can 4");
 
 	// The number of platforms naturally is the index of the last platform plus one.
 	if(entries <= platform_idx)
@@ -619,7 +632,7 @@ size_t InitOpenCL(GpuContext* ctx, size_t num_gpus, size_t platform_idx)
 		printer::inst()->print_msg(L1,"Selected OpenCL platform index %d doesn't exist.", platform_idx);
 		return ERR_STUPID_PARAMS;
 	}
-
+	printer::inst()->print_msg(L1,"Yes we can 5");
 	/*MSVC skimping on devel costs by shoehorning C99 to be a subset of C++? Noooo... can't be.*/
 #ifdef __GNUC__
 	cl_platform_id PlatformIDList[entries];
@@ -631,11 +644,13 @@ size_t InitOpenCL(GpuContext* ctx, size_t num_gpus, size_t platform_idx)
 		printer::inst()->print_msg(L1,"Error %s when calling clGetPlatformIDs for platform ID information.", err_to_str(ret));
 		return ERR_OCL_API;
 	}
-
+	printer::inst()->print_msg(L1,"Yes we can 6");
 	size_t infoSize;
 	clGetPlatformInfo(PlatformIDList[platform_idx], CL_PLATFORM_VENDOR, 0, NULL, &infoSize);
+	printer::inst()->print_msg(L1,"Yes we can 7");
 	std::vector<char> platformNameVec(infoSize);
 	clGetPlatformInfo(PlatformIDList[platform_idx], CL_PLATFORM_VENDOR, infoSize, platformNameVec.data(), NULL);
+	printer::inst()->print_msg(L1,"Yes we can 8");
 	std::string platformName(platformNameVec.data());
 	if( platformName.find("Advanced Micro Devices") == std::string::npos)
 	{
@@ -647,6 +662,7 @@ size_t InitOpenCL(GpuContext* ctx, size_t num_gpus, size_t platform_idx)
 		printer::inst()->print_msg(L1,"Error %s when calling clGetDeviceIDs for number of devices.", err_to_str(ret));
 		return ERR_OCL_API;
 	}
+	printer::inst()->print_msg(L1,"Yes we can 9");
 
 	// Same as the platform index sanity check, except we must check all requested device indexes
 	for(int i = 0; i < num_gpus; ++i)
@@ -657,6 +673,7 @@ size_t InitOpenCL(GpuContext* ctx, size_t num_gpus, size_t platform_idx)
 			return ERR_STUPID_PARAMS;
 		}
 	}
+	printer::inst()->print_msg(L1,"Yes we can 9");
 
 #ifdef __GNUC__
 	cl_device_id DeviceIDList[entries];
@@ -668,25 +685,27 @@ size_t InitOpenCL(GpuContext* ctx, size_t num_gpus, size_t platform_idx)
 		printer::inst()->print_msg(L1,"Error %s when calling clGetDeviceIDs for device ID information.", err_to_str(ret));
 		return ERR_OCL_API;
 	}
-
+	printer::inst()->print_msg(L1,"Yes we can 10");
 	// Indexes sanity checked above
 #ifdef __GNUC__
 	cl_device_id TempDeviceList[num_gpus];
 #else
 	cl_device_id* TempDeviceList = (cl_device_id*)_alloca(entries * sizeof(cl_device_id));
 #endif
+		printer::inst()->print_msg(L1,"Yes we can 11");
 	for(int i = 0; i < num_gpus; ++i)
 	{
 		ctx[i].DeviceID = DeviceIDList[ctx[i].deviceIdx];
 		TempDeviceList[i] = DeviceIDList[ctx[i].deviceIdx];
 	}
-
+	printer::inst()->print_msg(L1,"Yes we can 12");
 	opencl_ctx = clCreateContext(NULL, num_gpus, TempDeviceList, NULL, NULL, &ret);
 	if(ret != CL_SUCCESS)
 	{
 		printer::inst()->print_msg(L1,"Error %s when calling clCreateContext.", err_to_str(ret));
 		return ERR_OCL_API;
 	}
+	printer::inst()->print_msg(L1,"Yes we can 13");
 
 	//char* source_code = LoadTextFile(sSourcePath);
 
@@ -724,11 +743,12 @@ size_t InitOpenCL(GpuContext* ctx, size_t num_gpus, size_t platform_idx)
 			ctx[i].rawIntensity = reduced_intensity;
 			printer::inst()->print_msg(L0, "WARNING AMD: gpu %d intensity is not a multiple of 'worksize', auto reduce intensity to %d", ctx[i].deviceIdx, int(reduced_intensity));
 		}
-
+		printer::inst()->print_msg(L1,"Yes we can 14");
 		if((ret = InitOpenCLGpu(opencl_ctx, &ctx[i], source_code.c_str())) != ERR_SUCCESS)
 		{
 			return ret;
 		}
+		printer::inst()->print_msg(L1,"Yes we can 15");
 	}
 
 	return ERR_SUCCESS;
