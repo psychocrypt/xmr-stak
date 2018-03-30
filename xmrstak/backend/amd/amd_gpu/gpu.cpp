@@ -860,6 +860,10 @@ size_t InitOpenCL(GpuContext* ctx, size_t num_gpus, size_t platform_idx)
 	source_code = std::regex_replace(source_code, std::regex("XMRSTAK_INCLUDE_BLAKE256"), blake256CL);
 	source_code = std::regex_replace(source_code, std::regex("XMRSTAK_INCLUDE_GROESTL256"), groestl256CL);
 
+	std::ofstream out("amd.cl");
+	out << source_code;
+	out.close();
+
 	// create a directory  for the OpenCL compile cache
 	create_directory(get_home() + "/.openclcache");
 
