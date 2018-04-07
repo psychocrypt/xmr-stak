@@ -463,9 +463,14 @@ size_t InitOpenCLGpu(cl_context opencl_ctx, GpuContext* ctx, const char* source_
 		}
 		while(status == CL_BUILD_IN_PROGRESS);
 
-		std::vector<size_t> binary_sizes(num_devices);
-		clGetProgramInfo (ctx->Program, CL_PROGRAM_BINARY_SIZES, sizeof(size_t) * binary_sizes.size(), binary_sizes.data(), NULL);
+		size_t num_binaries = 0;
+		clGetProgramInfo(ctx->Program, CL_PROGRAM_BINARY_SIZES, 0, NULL, &num_binaries);
 
+		std::vector<size_t> binary_sizes(num_binaries);
+		clGetProgramInfo (ctx->Program, CL_PROGRAM_BINARY_SIZES, sizeof(size_t) * binary_sizes.size(), binary_sizes.data(), NULL);
+		std::cout<<"num bin "<<num_binaries<<std::endl;
+		for(auto & p : binary_sizes)
+			std::cout<<"sizes "<<p<<std::endl;
 		std::vector<char*> all_programs(num_devices);
 		std::vector<std::vector<char>> program_storage;
 
@@ -480,9 +485,10 @@ size_t InitOpenCLGpu(cl_context opencl_ctx, GpuContext* ctx, const char* source_
 				all_programs[p_id] = program_storage[p_id].data();
 				mem_size += binary_sizes[p_id];
 				p_id++;
+				std::cout<<p_id<<std::endl;
 			}
 
-		if((ret = clGetProgramInfo(ctx->Program, CL_PROGRAM_BINARIES, num_devices * sizeof(char*), all_programs.data(),NULL)) != CL_SUCCESS)
+			if((ret = clGetProgramInfo(ctx->Program, CL_PROGRAM_BINARIES, num_devices * sizeof(char*), all_programs.data(),NULL)) != CL_SUCCESS)
 			{
 				printer::inst()->print_msg(L1,"Error %s when calling clGetProgramInfo.", err_to_str(ret));
 				return ERR_OCL_API;
