@@ -291,6 +291,7 @@ bool jpsock::process_line(char* line, size_t len)
 	line[len-1] = '\0';
 
 	//printf("RECV: %s\n", line);
+	printer::inst()->print_msg(L0, "RECV: %s", line);
 
 	if (prv->jsonDoc.ParseInsitu(line).HasParseError())
 		return set_socket_error("PARSE error: Invalid JSON");
@@ -501,6 +502,7 @@ void jpsock::disconnect(bool quiet)
 bool jpsock::cmd_ret_wait(const char* sPacket, opq_json_val& poResult)
 {
 	//printf("SEND: %s\n", sPacket);
+	printer::inst()->print_msg(L0, "SEND: %s", sPacket);
 
 	/*Set up the call rsp for the call reply*/
 	prv->oCallValue.SetNull();
