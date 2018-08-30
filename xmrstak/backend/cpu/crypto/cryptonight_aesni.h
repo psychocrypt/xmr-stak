@@ -19,6 +19,7 @@
 #include "xmrstak/backend/cryptonight.hpp"
 #include <memory.h>
 #include <stdio.h>
+#include <cfenv>
 
 #ifdef __GNUC__
 #include <x86intrin.h>
@@ -422,6 +423,27 @@ void cn_implode_scratchpad(const __m128i* input, __m128i* output)
 	_mm_store_si128(output + 11, xout7);
 }
 
+inline __m128i int_sqrt33_1_double_precision(const uint64_t n0)
+{
+	__m128d x = _mm_castsi128_pd(_mm_add_epi64(_mm_cvtsi64_si128(n0 >> 12), _mm_set_epi64x(0, 1023ULL << 52)));
+	x = _mm_sqrt_sd(_mm_setzero_pd(), x);
+	uint64_t r = static_cast<uint64_t>(_mm_cvtsi128_si64(_mm_castpd_si128(x)));
+
+	const uint64_t s = r >> 20;
+	r >>= 19;
+
+	uint64_t x2 = (s - (1022ULL << 32)) * (r - s - (1022ULL << 32) + 1);
+
+#if defined _MSC_VER || (__GNUC__ >= 7)
+	_addcarry_u64(_subborrow_u64(0, x2, n0, (unsigned long long int*)&x2), r, 0, (unsigned long long int*)&r);
+#else
+	// GCC versions prior to 7 don't generate correct assembly for _subborrow_u64 -> _addcarry_u64 sequence
+ 	// Fallback to simpler code
+ 	if (x2 < n0) ++r;
+#endif
+	return _mm_cvtsi64_si128(r);
+}
+
 inline __m128i aes_round_bittube2(const __m128i& val, const __m128i& key)
 {
 	alignas(16) uint32_t k[4];
@@ -474,7 +496,9 @@ void cryptonight_hash(const void* input, size_t len, void* output, cryptonight_c
 	constexpr size_t ITERATIONS = cn_select_iter<ALGO>();
 	constexpr size_t MEM = cn_select_memory<ALGO>();
 
-	if((ALGO == cryptonight_monero || ALGO == cryptonight_aeon || ALGO == cryptonight_ipbc || ALGO == cryptonight_stellite || ALGO == cryptonight_masari || ALGO == cryptonight_bittube2) && len < 43)
+	if((ALGO == cryptonight_monero || ALGO == cryptonight_aeon || ALGO == cryptonight_ipbc || 
+		ALGO == cryptonight_stellite || ALGO == cryptonight_masari || ALGO == cryptonight_bittube2) &&
+		len < 43)
 	{
 		memset(output, 0, 32);
 		return;
@@ -500,17 +524,45 @@ void cryptonight_hash(const void* input, size_t len, void* output, cryptonight_c
 	__m128i bx0 = _mm_set_epi64x(h0[3] ^ h0[7], h0[2] ^ h0[6]);
 
 	uint64_t idx0 = h0[0] ^ h0[4];
+	uint64_t idx1 = idx0 & MASK;
+
+	// cryptonight_monero_v8 variables
+	__m128i bx1;
+	__m128i division_result_xmm;
+	__m128i sqrt_result_xmm;
+
+	if(ALGO == cryptonight_monero_v8)
+	{
+		bx1 = _mm_set_epi64x(h0[9] ^ h0[11], h0[8] ^ h0[10]);
+		division_result_xmm = _mm_cvtsi64_si128(h0[12]);
+		sqrt_result_xmm = _mm_cvtsi64_si128(h0[13]);
+
+#ifdef _MSC_VER
+		_control87(RC_DOWN, MCW_RC);
+#else
+		std::fesetround(FE_DOWNWARD);
+#endif
+	}
 
 	// Optim - 90% time boundary
 	for(size_t i = 0; i < ITERATIONS; i++)
 	{
 		__m128i cx;
-		cx = _mm_load_si128((__m128i *)&l0[idx0 & MASK]);
+		cx = _mm_load_si128((__m128i *)&l0[idx1]);
+		__m128i ax0;
 
-		if (ALGO == cryptonight_bittube2)
+		if(ALGO == cryptonight_bittube2)
 		{
 			cx = aes_round_bittube2(cx, _mm_set_epi64x(ah0, al0));
-		} 
+		}
+		else if(ALGO == cryptonight_monero_v8)
+		{
+			ax0 = _mm_set_epi64x(ah0, al0);
+			if(SOFT_AES)
+				cx = soft_aesenc(cx, ax0);
+			else
+				cx = _mm_aesenc_si128(cx, ax0);
+		}
 		else
 		{
 			if(SOFT_AES)
@@ -519,25 +571,81 @@ void cryptonight_hash(const void* input, size_t len, void* output, cryptonight_c
 				cx = _mm_aesenc_si128(cx, _mm_set_epi64x(ah0, al0));
 		}
 
+		// Shuffle the other 3x16 byte chunks in the current 64-byte cache line
+		if(ALGO == cryptonight_monero_v8)
+		{
+			// Shuffle constants here were chosen carefully
+			// to maximize permutation cycle length
+			// and have no 2-byte elements stay in their places
+			const __m128i chunk1 = _mm_load_si128((__m128i *)&l0[idx1 ^ 0x10]);
+			const __m128i chunk2 = _mm_load_si128((__m128i *)&l0[idx1 ^ 0x20]);
+			const __m128i chunk3 = _mm_load_si128((__m128i *)&l0[idx1 ^ 0x30]);
+			_mm_store_si128((__m128i *)&l0[idx1 ^ 0x10], _mm_add_epi64(chunk3, bx1));
+			_mm_store_si128((__m128i *)&l0[idx1 ^ 0x20], _mm_add_epi64(chunk1, bx0));
+			_mm_store_si128((__m128i *)&l0[idx1 ^ 0x30], _mm_add_epi64(chunk2, ax0));
+		}
+
 		if(ALGO == cryptonight_monero || ALGO == cryptonight_aeon || ALGO == cryptonight_ipbc || ALGO == cryptonight_stellite || ALGO == cryptonight_masari || ALGO == cryptonight_bittube2)
-			cryptonight_monero_tweak<ALGO>((uint64_t*)&l0[idx0 & MASK], _mm_xor_si128(bx0, cx));
+			cryptonight_monero_tweak<ALGO>((uint64_t*)&l0[idx1], _mm_xor_si128(bx0, cx));
 		else
-			_mm_store_si128((__m128i *)&l0[idx0 & MASK], _mm_xor_si128(bx0, cx));
+			_mm_store_si128((__m128i *)&l0[idx1], _mm_xor_si128(bx0, cx));
 
 		idx0 = _mm_cvtsi128_si64(cx);
+		idx1 = idx0 & MASK;
 
 		if(PREFETCH)
-			_mm_prefetch((const char*)&l0[idx0 & MASK], _MM_HINT_T0);
-		bx0 = cx;
+			_mm_prefetch((const char*)&l0[idx1], _MM_HINT_T0);
+
+		if(ALGO != cryptonight_monero_v8)
+			bx0 = cx;
 
 		uint64_t hi, lo, cl, ch;
-		cl = ((uint64_t*)&l0[idx0 & MASK])[0];
-		ch = ((uint64_t*)&l0[idx0 & MASK])[1];
+		cl = ((uint64_t*)&l0[idx1])[0];
+		ch = ((uint64_t*)&l0[idx1])[1];
+
+		if(ALGO == cryptonight_monero_v8)
+		{
+			const uint64_t sqrt_result = static_cast<uint64_t>(_mm_cvtsi128_si64(sqrt_result_xmm));
+
+			// Use division and square root results from the _previous_ iteration to hide the latency
+			const uint64_t cx0 = _mm_cvtsi128_si64(cx);
+			cl ^= static_cast<uint64_t>(_mm_cvtsi128_si64(division_result_xmm)) ^ (sqrt_result << 32);
+			const uint32_t d = (cx0 + (sqrt_result << 1)) | 0x80000001UL;
+
+			// Most and least significant bits in the divisor are set to 1
+			// to make sure we don't divide by a small or even number,
+			// so there are no shortcuts for such cases
+			//
+			// Quotient may be as large as (2^64 - 1)/(2^31 + 1) = 8589934588 = 2^33 - 4
+			// We drop the highest bit to fit both quotient and remainder in 32 bits
+
+			// Compiler will optimize it to a single div instruction
+			const uint64_t cx1 = _mm_cvtsi128_si64(_mm_srli_si128(cx, 8));
+			const uint64_t division_result = static_cast<uint32_t>(cx1 / d) + ((cx1 % d) << 32);
+			division_result_xmm = _mm_cvtsi64_si128(static_cast<int64_t>(division_result));
+
+			// Use division_result as an input for the square root to prevent parallel implementation in hardware
+			sqrt_result_xmm = int_sqrt33_1_double_precision(cx0 + division_result);
+		}
 
 		lo = _umul128(idx0, cl, &hi);
 
+		// Shuffle the other 3x16 byte chunks in the current 64-byte cache line
+		if(ALGO == cryptonight_monero_v8)
+		{
+			// Shuffle constants here were chosen carefully
+			// to maximize permutation cycle length
+			// and have no 2-byte elements stay in their places
+			const __m128i chunk1 = _mm_load_si128((__m128i *)&l0[idx1 ^ 0x10]);
+			const __m128i chunk2 = _mm_load_si128((__m128i *)&l0[idx1 ^ 0x20]);
+			const __m128i chunk3 = _mm_load_si128((__m128i *)&l0[idx1 ^ 0x30]);
+			_mm_store_si128((__m128i *)&l0[idx1 ^ 0x10], _mm_add_epi64(chunk3, bx1));
+			_mm_store_si128((__m128i *)&l0[idx1 ^ 0x20], _mm_add_epi64(chunk1, bx0));
+			_mm_store_si128((__m128i *)&l0[idx1 ^ 0x30], _mm_add_epi64(chunk2, ax0));
+		}
+
 		al0 += hi;
-		((uint64_t*)&l0[idx0 & MASK])[0] = al0;
+		((uint64_t*)&l0[idx1])[0] = al0;
 		al0 ^= cl;
 		if(PREFETCH)
 			_mm_prefetch((const char*)&l0[al0 & MASK], _MM_HINT_T0);
@@ -545,33 +653,41 @@ void cryptonight_hash(const void* input, size_t len, void* output, cryptonight_c
 
 		if (ALGO == cryptonight_monero || ALGO == cryptonight_aeon || ALGO == cryptonight_ipbc || ALGO == cryptonight_stellite || ALGO == cryptonight_masari || ALGO == cryptonight_bittube2) {
 			if (ALGO == cryptonight_ipbc || ALGO == cryptonight_bittube2)
-				((uint64_t*)&l0[idx0 & MASK])[1] = ah0 ^ monero_const ^ ((uint64_t*)&l0[idx0 & MASK])[0];
+				((uint64_t*)&l0[idx1])[1] = ah0 ^ monero_const ^ ((uint64_t*)&l0[idx1])[0];
 			else
-				((uint64_t*)&l0[idx0 & MASK])[1] = ah0 ^ monero_const;
+				((uint64_t*)&l0[idx1])[1] = ah0 ^ monero_const;
 		}
 		else
-			((uint64_t*)&l0[idx0 & MASK])[1] = ah0;
+			((uint64_t*)&l0[idx1])[1] = ah0;
 		ah0 ^= ch;
 
 		idx0 = al0;
+		idx1 = idx0 & MASK;
 
 		if(ALGO == cryptonight_heavy || ALGO == cryptonight_bittube2)
 		{
-			int64_t n  = ((int64_t*)&l0[idx0 & MASK])[0];
-			int32_t d  = ((int32_t*)&l0[idx0 & MASK])[2];
+			int64_t n  = ((int64_t*)&l0[idx1])[0];
+			int32_t d  = ((int32_t*)&l0[idx1])[2];
 			int64_t q = n / (d | 0x5);
 
-			((int64_t*)&l0[idx0 & MASK])[0] = n ^ q;
+			((int64_t*)&l0[idx1])[0] = n ^ q;
 			idx0 = d ^ q;
+			idx1 = idx0 & MASK;
 		}
 		else if(ALGO == cryptonight_haven)
 		{
-			int64_t n  = ((int64_t*)&l0[idx0 & MASK])[0];
-			int32_t d  = ((int32_t*)&l0[idx0 & MASK])[2];
+			int64_t n  = ((int64_t*)&l0[idx1])[0];
+			int32_t d  = ((int32_t*)&l0[idx1])[2];
 			int64_t q = n / (d | 0x5);
 
-			((int64_t*)&l0[idx0 & MASK])[0] = n ^ q;
+			((int64_t*)&l0[idx1])[0] = n ^ q;
 			idx0 = (~d) ^ q;
+			idx1 = idx0 & MASK;
+		}
+		else if(ALGO == cryptonight_monero_v8)
+		{
+			bx1 = bx0;
+			bx0 = cx;
 		}
 	}
 
