@@ -525,6 +525,7 @@ void cryptonight_hash(const void* input, size_t len, void* output, cryptonight_c
 
 	uint64_t idx0 = h0[0] ^ h0[4];
 	uint64_t idx1 = idx0 & MASK;
+	//printf("cpu %llu %llu\n", idx0, idx1);
 
 	// cryptonight_monero_v8 variables
 	__m128i bx1;
@@ -607,6 +608,7 @@ void cryptonight_hash(const void* input, size_t len, void* output, cryptonight_c
 		{
 			const uint64_t sqrt_result = static_cast<uint64_t>(_mm_cvtsi128_si64(sqrt_result_xmm));
 
+									
 			// Use division and square root results from the _previous_ iteration to hide the latency
 			const uint64_t cx0 = _mm_cvtsi128_si64(cx);
 			cl ^= static_cast<uint64_t>(_mm_cvtsi128_si64(division_result_xmm)) ^ (sqrt_result << 32);
@@ -621,11 +623,14 @@ void cryptonight_hash(const void* input, size_t len, void* output, cryptonight_c
 
 			// Compiler will optimize it to a single div instruction
 			const uint64_t cx1 = _mm_cvtsi128_si64(_mm_srli_si128(cx, 8));
+			//if(i<2)
+			//printf("cpu %llu %llu\n", (sqrt_result<<32)>>32, *((uint64_t*)&cx1));
 			const uint64_t division_result = static_cast<uint32_t>(cx1 / d) + ((cx1 % d) << 32);
 			division_result_xmm = _mm_cvtsi64_si128(static_cast<int64_t>(division_result));
 
 			// Use division_result as an input for the square root to prevent parallel implementation in hardware
 			sqrt_result_xmm = int_sqrt33_1_double_precision(cx0 + division_result);
+
 		}
 
 		lo = _umul128(idx0, cl, &hi);

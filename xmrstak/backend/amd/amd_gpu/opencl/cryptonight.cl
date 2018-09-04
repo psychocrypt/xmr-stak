@@ -554,7 +554,7 @@ __kernel void JOIN(cn0,ALGO)(__global ulong *input, __global uint4 *Scratchpad, 
 	mem_fence(CLK_GLOBAL_MEM_FENCE);
 }
 
-#define SCRATCHPAD_CHUNK(N) (Scratchpad[IDX(((idx0) >> 4) ^ N)])
+#define SCRATCHPAD_CHUNK(N) (*(__local uint4*)((__local uchar*)(scratchpad_line) + (idxS ^ (N << 4))))
 		
 __attribute__((reqd_work_group_size(WORKSIZE, 1, 1)))
 __kernel void JOIN(cn1,ALGO) (__global uint4 *Scratchpad, __global ulong *states, ulong Threads
@@ -570,6 +570,8 @@ __kernel void JOIN(cn1,ALGO) (__global uint4 *Scratchpad, __global ulong *states
 #if(ALGO==11)		
 	ulong b[4];
 	uint4 b_x[2];
+	__local uint16 scratchpad_line_buf[WORKSIZE];
+	__local uint16* scratchpad_line = scratchpad_line_buf + get_local_id(0);
 #else
 	ulong b[2];
 	uint4 b_x[1];
@@ -656,7 +658,14 @@ __kernel void JOIN(cn1,ALGO) (__global uint4 *Scratchpad, __global ulong *states
 		for(int i = 0; i < ITERATIONS; ++i)
 		{
 			ulong c[2];
-
+// cryptonight_monero_v8
+#if(ALGO==11)
+			
+			ulong idx1 = idx0 & 0x1FFFC0;
+			ulong idxS = a[0] & 0x30;
+			*scratchpad_line = *(__global uint16*)((__global uchar*)(Scratchpad) + idx1);
+			
+#endif
 			((uint4 *)c)[0] = SCRATCHPAD_CHUNK(0);
 // cryptonight_bittube2
 #if(ALGO == 10)
@@ -689,14 +698,21 @@ __kernel void JOIN(cn1,ALGO) (__global uint4 *Scratchpad, __global ulong *states
 #	endif
 			b_x[0].s2 ^= ((table >> index) & 0x30U) << 24;
 			SCRATCHPAD_CHUNK(0) = b_x[0];
+			idx0 = c[0] & MASK;
 // cryptonight_monero_v8
 #elif(ALGO==11)
 			SCRATCHPAD_CHUNK(0) = b_x[0] ^ ((uint4 *)c)[0];
+			*(__global uint16*)((__global uchar*)(Scratchpad) + idx1) = *scratchpad_line;
+			idx0 = c[0] & MASK;
+			idx1 = idx0 & 0x1FFFC0;
+			idxS = c[0] & 0x30;
+			*scratchpad_line = *(__global uint16*)((__global uchar*)(Scratchpad) + idx1);
 #else
 			b_x[0] ^= ((uint4 *)c)[0];
 			SCRATCHPAD_CHUNK(0) = b_x[0];
-#endif
 			idx0 = c[0] & MASK;
+#endif
+			
 			uint4 tmp;
 			tmp = SCRATCHPAD_CHUNK(0);
 // cryptonight_monero_v8
@@ -768,6 +784,7 @@ __kernel void JOIN(cn1,ALGO) (__global uint4 *Scratchpad, __global ulong *states
 		
 // cryptonight_monero_v8
 #if (ALGO == 11)
+			*(__global uint16*)((__global uchar*)(Scratchpad) + idx1) = *scratchpad_line;
 			b_x[1] = b_x[0];
 #endif
 			b_x[0] = ((uint4 *)c)[0];
