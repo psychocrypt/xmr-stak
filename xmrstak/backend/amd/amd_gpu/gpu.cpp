@@ -390,9 +390,9 @@ size_t InitOpenCLGpu(cl_context opencl_ctx, GpuContext* ctx, const char* source_
 
 		char options[512];
 		snprintf(options, sizeof(options),
-			"-DITERATIONS=%d -DMASK=%d -DWORKSIZE=%llu -DSTRIDED_INDEX=%d -DMEM_CHUNK_EXPONENT=%d  -DCOMP_MODE=%d -DMEMORY=%llu -DALGO=%d",
+			"-DITERATIONS=%d -DMASK=%d -DWORKSIZE=%llu -DSTRIDED_INDEX=%d -DMEM_CHUNK_EXPONENT=%d  -DCOMP_MODE=%d -DMEMORY=%llu -DALGO=%d -DCN_UNROLL=%d",
 		hashIterations, threadMemMask, int_port(ctx->workSize), ctx->stridedIndex, int(1u<<ctx->memChunk), ctx->compMode ? 1 : 0,
-			int_port(hashMemSize), int(miner_algo[ii]));
+			int_port(hashMemSize), int(miner_algo[ii]), ctx->unroll);
 		/* create a hash for the compile time cache
 		 * used data:
 		 *   - source code
