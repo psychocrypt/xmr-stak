@@ -9,7 +9,7 @@ R"===(
  *                 2 = chunked memory, chunk size is controlled by 'mem_chunk'
  *                     required: intensity must be a multiple of worksize
  *                 1 or true  = use 16byte contiguous memory per thread, the next memory block has offset of intensity blocks
- *                             (not allowed for cryptonight_v8 ans monero8)
+ *                             (not allowed for cryptonight_v8 and monero8)
  *                 0 or false = use a contiguous block of memory per thread
  * mem_chunk     - range 0 to 18: set the number of elements (16byte) per chunk
  *                 this value is only used if 'strided_index' == 2
@@ -21,7 +21,7 @@ R"===(
  *                 in this case set the intensity to a multiple of the worksize or activate comp_mode.
  * "gpu_threads_conf" :
  * [
- *	{ "index" : 0, "intensity" : 1000, "worksize" : 8, "affine_to_cpu" : false, 
+ *	{ "index" : 0, "intensity" : 1000, "worksize" : 8, "affine_to_cpu" : false,
  *    "strided_index" : true, "mem_chunk" : 2, "unroll" : 8, "comp_mode" : true },
  * ],
  * If you do not wish to mine with your AMD GPU(s) then use:

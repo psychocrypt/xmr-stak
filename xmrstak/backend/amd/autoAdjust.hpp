@@ -118,7 +118,7 @@ private:
 			if(
 				ctx.isNVIDIA && (
 					ctx.name.find("P100") != std::string::npos ||
-				    ctx.name.find("V100") != std::string::npos
+					ctx.name.find("V100") != std::string::npos
 				)
 			)
 			{

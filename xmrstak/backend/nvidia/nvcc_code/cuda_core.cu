@@ -12,38 +12,38 @@
 #include <windows.h>
 extern "C" void compat_usleep(uint64_t waitTime)
 {
-    if (waitTime > 0)
-    {
-        if (waitTime > 100)
-        {
-            // use a waitable timer for larger intervals > 0.1ms
+	if (waitTime > 0)
+	{
+		if (waitTime > 100)
+		{
+			// use a waitable timer for larger intervals > 0.1ms
 
-            HANDLE timer;
-            LARGE_INTEGER ft;
+			HANDLE timer;
+			LARGE_INTEGER ft;
 
-            ft.QuadPart = -10ll * int64_t(waitTime); // Convert to 100 nanosecond interval, negative value indicates relative time
+			ft.QuadPart = -10ll * int64_t(waitTime); // Convert to 100 nanosecond interval, negative value indicates relative time
 
-            timer = CreateWaitableTimer(NULL, TRUE, NULL);
-            SetWaitableTimer(timer, &ft, 0, NULL, NULL, 0);
-            WaitForSingleObject(timer, INFINITE);
-            CloseHandle(timer);
-        }
-        else
-        {
-            // use a polling loop for short intervals <= 100ms
+			timer = CreateWaitableTimer(NULL, TRUE, NULL);
+			SetWaitableTimer(timer, &ft, 0, NULL, NULL, 0);
+			WaitForSingleObject(timer, INFINITE);
+			CloseHandle(timer);
+		}
+		else
+		{
+			// use a polling loop for short intervals <= 100ms
 
-            LARGE_INTEGER perfCnt, start, now;
-            __int64 elapsed;
+			LARGE_INTEGER perfCnt, start, now;
+			__int64 elapsed;
 
-            QueryPerformanceFrequency(&perfCnt);
-            QueryPerformanceCounter(&start);
-            do {
+			QueryPerformanceFrequency(&perfCnt);
+			QueryPerformanceCounter(&start);
+			do {
 		SwitchToThread();
-                QueryPerformanceCounter((LARGE_INTEGER*) &now);
-                elapsed = (__int64)((now.QuadPart - start.QuadPart) / (float)perfCnt.QuadPart * 1000 * 1000);
-            } while ( elapsed < waitTime );
-        }
-    }
+				QueryPerformanceCounter((LARGE_INTEGER*) &now);
+				elapsed = (__int64)((now.QuadPart - start.QuadPart) / (float)perfCnt.QuadPart * 1000 * 1000);
+			} while ( elapsed < waitTime );
+		}
+	}
 }
 #else
 #include <unistd.h>
@@ -172,7 +172,7 @@ __forceinline__ __device__ void unusedVar( const T& )
  * group_n - must be a power of 2!
  *
  * @param ptr pointer to shared memory, size must be `threadIdx.x * sizeof(uint32_t)`
- *            value can be NULL for compute architecture >=sm_30
+ *			value can be NULL for compute architecture >=sm_30
  * @param sub thread number within the group, range [0:group_n]
  * @param value value to share with other threads within the group
  * @param src thread number within the group from where the data is read, range [0:group_n]
@@ -181,13 +181,13 @@ template<size_t group_n>
 __forceinline__ __device__ uint32_t shuffle(volatile uint32_t* ptr,const uint32_t sub,const int val,const uint32_t src)
 {
 #if( __CUDA_ARCH__ < 300 )
-    ptr[sub] = val;
-    return ptr[src & (group_n-1)];
+	ptr[sub] = val;
+	return ptr[src & (group_n-1)];
 #else
-    unusedVar( ptr );
-    unusedVar( sub );
+	unusedVar( ptr );
+	unusedVar( sub );
 #   if(__CUDACC_VER_MAJOR__ >= 9)
-    return __shfl_sync(__activemask(), val, src, group_n );
+	return __shfl_sync(__activemask(), val, src, group_n );
 #	else
 	return __shfl( val, src, group_n );
 #	endif
@@ -214,7 +214,7 @@ __forceinline__ __device__ uint64_t int_sqrt33_1_double_precision(int i,const ui
 
 	uint64_t x2 = (s - (1022ULL << 32)) * (r - s - (1022ULL << 32) + 1);
 
- 	if (x2 < n0) ++r;
+	if (x2 < n0) ++r;
 
 	return r;
 }
@@ -238,10 +238,10 @@ __global__ void cryptonight_core_gpu_phase2( int threads, int bfactor, int parti
 	const int sub2 = sub & 2;
 
 #if( __CUDA_ARCH__ < 300 )
-        extern __shared__ uint32_t shuffleMem[];
-        volatile uint32_t* sPtr = (volatile uint32_t*)(shuffleMem + (threadIdx.x& 0xFFFFFFFC));
+		extern __shared__ uint32_t shuffleMem[];
+		volatile uint32_t* sPtr = (volatile uint32_t*)(shuffleMem + (threadIdx.x& 0xFFFFFFFC));
 #else
-        volatile uint32_t* sPtr = NULL;
+		volatile uint32_t* sPtr = NULL;
 #endif
 	if ( thread >= threads )
 		return;
@@ -296,7 +296,7 @@ __global__ void cryptonight_core_gpu_phase2( int threads, int bfactor, int parti
 		for ( int x = 0; x < 2; ++x )
 		{
 			j = ( ( idx0 & MASK ) >> 2 ) + sub;
-			
+
 			if(ALGO == cryptonight_bittube2)
 			{
 				uint32_t k[4];
@@ -450,7 +450,7 @@ __global__ void cryptonight_core_gpu_phase2( int threads, int bfactor, int parti
 				const uint64_t division_result_tmp = static_cast<uint32_t>(cx1 / dd) + ((cx1 % dd) << 32);
 
 				division_result = ((uint32_t*)&division_result_tmp)[sub % 2];
-								
+
 				// Use division_result as an input for the square root to prevent parallel implementation in hardware
 				const uint64_t sqrt_result_tmp = int_sqrt33_1_double_precision(i, cx0 + division_result_tmp);
 				sqrt_result = ((uint32_t*)&sqrt_result_tmp)[sub % 2];
@@ -493,13 +493,13 @@ __global__ void cryptonight_core_gpu_phase2( int threads, int bfactor, int parti
 					*( (uint4*)((uint64_t)(long_state + (j & 0xFFFFFFFC)) ^ (dest2<<4)) ) = store;
 				}
 			}
-			
+
 			t1[1] = shuffle<4>(sPtr,sub, d[x], 1);
 			#pragma unroll
 			for ( k = 0; k < 2; k++ )
 				t2[k] = shuffle<4>(sPtr,sub, a, k + sub2);
 
-            *( (uint64_t *) t2 ) += sub2 ? ( *( (uint64_t *) t1 ) * *( (uint64_t*) zz ) ) : __umul64hi( *( (uint64_t *) t1 ), *( (uint64_t*) zz ) );
+			*( (uint64_t *) t2 ) += sub2 ? ( *( (uint64_t *) t1 ) * *( (uint64_t*) zz ) ) : __umul64hi( *( (uint64_t *) t1 ), *( (uint64_t*) zz ) );
 
 			res = *( (uint64_t *) t2 )  >> ( sub & 1 ? 32 : 0 );
 
@@ -567,7 +567,7 @@ __global__ void cryptonight_core_gpu_phase2( int threads, int bfactor, int parti
 		}
 		else
 			(d_ctx_b + thread * 4)[sub] = d[1];
-			
+
 		if(ALGO == cryptonight_heavy || ALGO == cryptonight_haven || ALGO == cryptonight_bittube2)
 			if(sub&1)
 				*(d_ctx_b + threads * 4 + thread) = idx0;
@@ -660,7 +660,7 @@ void cryptonight_core_gpu_hash(nvid_ctx* ctx, uint32_t nonce)
 
 	for ( int i = 0; i < partcount; i++ )
 	{
-        CUDA_CHECK_MSG_KERNEL(
+		CUDA_CHECK_MSG_KERNEL(
 			ctx->device_id,
 			"\n**suggestion: Try to increase the value of the attribute 'bfactor' or \nreduce 'threads' in the NVIDIA config file.**",
 			cryptonight_core_gpu_phase2<ITERATIONS,MEMORY,MASK,ALGO><<<
@@ -678,7 +678,7 @@ void cryptonight_core_gpu_hash(nvid_ctx* ctx, uint32_t nonce)
 				nonce,
 				ctx->d_input
 			)
-	    );
+		);
 
 		if ( partcount > 1 && ctx->device_bsleep > 0) compat_usleep( ctx->device_bsleep );
 	}
@@ -745,11 +745,11 @@ void cryptonight_core_cpu_hash(nvid_ctx* ctx, xmrstak_algo miner_algo, uint32_t 
 	}
 	else if(miner_algo == cryptonight_haven)
 	{
-	  cryptonight_core_gpu_hash<CRYPTONIGHT_HEAVY_ITER, CRYPTONIGHT_HEAVY_MASK, CRYPTONIGHT_HEAVY_MEMORY/4, cryptonight_haven>(ctx, startNonce);
+		cryptonight_core_gpu_hash<CRYPTONIGHT_HEAVY_ITER, CRYPTONIGHT_HEAVY_MASK, CRYPTONIGHT_HEAVY_MEMORY/4, cryptonight_haven>(ctx, startNonce);
 	}
 	else if(miner_algo == cryptonight_bittube2)
 	{
-	  cryptonight_core_gpu_hash<CRYPTONIGHT_HEAVY_ITER, CRYPTONIGHT_HEAVY_MASK, CRYPTONIGHT_HEAVY_MEMORY/4, cryptonight_bittube2>(ctx, startNonce);
+		cryptonight_core_gpu_hash<CRYPTONIGHT_HEAVY_ITER, CRYPTONIGHT_HEAVY_MASK, CRYPTONIGHT_HEAVY_MEMORY/4, cryptonight_bittube2>(ctx, startNonce);
 	}
 
 }

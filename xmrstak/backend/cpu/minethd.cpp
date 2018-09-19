@@ -94,8 +94,8 @@ bool minethd::thd_setaffinity(std::thread::native_handle_type h, uint64_t cpu_id
 	CPU_SET(cpu_id, &mn);
 	return pthread_setaffinity_np(h, sizeof(cpuset_t), &mn) == 0;
 #elif defined(__OpenBSD__)
-        printer::inst()->print_msg(L0,"WARNING: thread pinning is not supported under OPENBSD.");
-        return true;
+	printer::inst()->print_msg(L0,"WARNING: thread pinning is not supported under OPENBSD.");
+	return true;
 #else
 	cpu_set_t mn;
 	CPU_ZERO(&mn);
@@ -453,7 +453,7 @@ template<size_t N>
 minethd::cn_hash_fun minethd::func_multi_selector(bool bHaveAes, bool bNoPrefetch, xmrstak_algo algo, const std::string& asm_version_str)
 {
 	static_assert(N >= 1, "number of threads must be >= 1" );
-	
+
 	// check for asm optimized version for cryptonight_v8
 	if(N == 1 && algo == cryptonight_monero_v8 && bHaveAes)
 	{

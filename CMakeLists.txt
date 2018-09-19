@@ -531,7 +531,7 @@ if(OpenCL_FOUND)
         SHARED
         ${OPENCLSRCFILES}
     )
-    target_link_libraries(xmrstak_opencl_backend ${OpenCL_LIBRARY} )
+    target_link_libraries(xmrstak_opencl_backend ${OpenCL_LIBRARY})
     target_link_libraries(xmrstak_opencl_backend xmr-stak-backend xmr-stak-asm)
 endif()
 
