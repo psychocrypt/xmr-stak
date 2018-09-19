@@ -331,7 +331,7 @@ void executor::on_sock_ready(size_t pool_id)
 	{
 		if(pool->have_call_error() && !pool->is_dev_pool())
 		{
-			std::string str = "Login error: " +  pool->get_call_error();
+			std::string str = "Login error: " + pool->get_call_error();
 			log_socket_error(pool, std::move(str));
 		}
 
@@ -514,7 +514,7 @@ void executor::ex_main()
 	for(; i < pc; i++)
 	{
 		jconf::pool_cfg cfg;
- 		jconf::inst()->GetPoolConfig(i, cfg);
+		jconf::inst()->GetPoolConfig(i, cfg);
 #ifdef CONF_NO_TLS
 		if(cfg.tls)
 		{

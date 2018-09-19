@@ -52,18 +52,18 @@ Besides [Monero](https://getmonero.org), following coins can be mined using this
 If your prefered coin is not listed, you can choose one of the following algorithms:
 
 - 1MiB scratchpad memory
-    - cryptonight_lite
-    - cryptonight_lite_v7
-    - cryptonight_lite_v7_xor (algorithm used by ipbc)
+  - cryptonight_lite
+  - cryptonight_lite_v7
+  - cryptonight_lite_v7_xor (algorithm used by ipbc)
 - 2MiB scratchpad memory
-    - cryptonight
-    - cryptonight_masari
-    - cryptonight_v7
-    - cryptonight_v7_stellite
-    - cryptonight_v8
+  - cryptonight
+  - cryptonight_masari
+  - cryptonight_v7
+  - cryptonight_v7_stellite
+  - cryptonight_v8
 - 4MiB scratchpad memory
-    - cryptonight_haven
-    - cryptonight_heavy
+  - cryptonight_haven
+  - cryptonight_heavy
 
 Please note, this list is not complete and is not an endorsement.
 
