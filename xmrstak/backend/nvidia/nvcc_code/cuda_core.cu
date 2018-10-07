@@ -347,11 +347,7 @@ __global__ void cryptonight_core_gpu_phase2_double( int threads, int bfactor, in
 			const u64 chunk1 = myChunks[ idx1 ^ 2 + sub ];
 			const u64 chunk2 = myChunks[ idx1 ^ 4 + sub ];
 			const u64 chunk3 = myChunks[ idx1 ^ 6 + sub ];
-#if (__CUDACC_VER_MAJOR__ >= 9)
-			__syncwarp();
-#else
 			__syncthreads( );
-#endif
 			myChunks[ idx1 ^ 2 + sub ] = chunk3 + bx1;
 			myChunks[ idx1 ^ 4 + sub ] = chunk1 + bx0;
 			myChunks[ idx1 ^ 6 + sub ] = chunk2 + ax0;
@@ -386,11 +382,7 @@ __global__ void cryptonight_core_gpu_phase2_double( int threads, int bfactor, in
 			// Use division_result as an input for the square root to prevent parallel implementation in hardware
 			sqrt_result = fast_sqrt_v2(cx_mul + division_result);
 		}
-#if (__CUDACC_VER_MAJOR__ >= 9)
-				__syncwarp();
-#else
-				__syncthreads( );
-#endif
+		__syncthreads( );
 		uint64_t c = ((uint64_t*)myChunks)[ idx1 + sub ];
 
 		{
@@ -403,11 +395,7 @@ __global__ void cryptonight_core_gpu_phase2_double( int threads, int bfactor, in
 				u64 chunk2 = myChunks[ idx1 ^ 4 + sub ];
 				res ^= ((uint64_t*)&chunk2)[0];
 				const u64 chunk3 = myChunks[ idx1 ^ 6 + sub ];
-#if (__CUDACC_VER_MAJOR__ >= 9)
-				__syncwarp();
-#else
 				__syncthreads( );
-#endif
 				myChunks[ idx1 ^ 2 + sub ] = chunk3 + bx1;
 				myChunks[ idx1 ^ 4 + sub ] = chunk1 + bx0;
 				myChunks[ idx1 ^ 6 + sub ] = chunk2 + ax0;
