@@ -330,7 +330,11 @@ __global__ void cryptonight_core_gpu_phase2_double( int threads, int bfactor, in
 		ptr0 = (u64 *)&l0[idx0 & MASK & 0x1FFFC0];
 
 		((ulong4*)myChunks)[sub] = ((ulong4*)ptr0)[sub];
-
+#if (__CUDACC_VER_MAJOR__ >= 9)
+		__syncwarp();
+#else
+		__syncthreads( );
+#endif
 		uint32_t idx1 = (idx0 & 0x30) >> 3;
 
 		const u64 cx = myChunks[ idx1 + sub ];
@@ -348,9 +352,9 @@ __global__ void cryptonight_core_gpu_phase2_double( int threads, int bfactor, in
 			const u64 chunk2 = myChunks[ idx1 ^ 4 + sub ];
 			const u64 chunk3 = myChunks[ idx1 ^ 6 + sub ];
 #if (__CUDACC_VER_MAJOR__ >= 9)
-			__syncwarp();
+		__syncwarp();
 #else
-			__syncthreads( );
+		__syncthreads( );
 #endif
 			myChunks[ idx1 ^ 2 + sub ] = chunk3 + bx1;
 			myChunks[ idx1 ^ 4 + sub ] = chunk1 + bx0;
@@ -358,6 +362,11 @@ __global__ void cryptonight_core_gpu_phase2_double( int threads, int bfactor, in
 		}
 
 		myChunks[ idx1 + sub ] = cx_aes ^ bx0;
+#if (__CUDACC_VER_MAJOR__ >= 9)
+		__syncwarp();
+#else
+		__syncthreads( );
+#endif
 		((ulong4*)ptr0)[sub] = ((ulong4*)myChunks)[sub];
 
 		idx0 = shuffle<2>(sPtr, sub, cx_aes.x, 0);
@@ -387,9 +396,9 @@ __global__ void cryptonight_core_gpu_phase2_double( int threads, int bfactor, in
 			sqrt_result = fast_sqrt_v2(cx_mul + division_result);
 		}
 #if (__CUDACC_VER_MAJOR__ >= 9)
-				__syncwarp();
+		__syncwarp();
 #else
-				__syncthreads( );
+		__syncthreads( );
 #endif
 		uint64_t c = ((uint64_t*)myChunks)[ idx1 + sub ];
 
@@ -404,9 +413,9 @@ __global__ void cryptonight_core_gpu_phase2_double( int threads, int bfactor, in
 				res ^= ((uint64_t*)&chunk2)[0];
 				const u64 chunk3 = myChunks[ idx1 ^ 6 + sub ];
 #if (__CUDACC_VER_MAJOR__ >= 9)
-				__syncwarp();
+		__syncwarp();
 #else
-				__syncthreads( );
+		__syncthreads( );
 #endif
 				myChunks[ idx1 ^ 2 + sub ] = chunk3 + bx1;
 				myChunks[ idx1 ^ 4 + sub ] = chunk1 + bx0;
@@ -420,6 +429,11 @@ __global__ void cryptonight_core_gpu_phase2_double( int threads, int bfactor, in
 			bx0 = cx_aes;
 		}
 		myChunks[ idx1 + sub ] = ax0;
+#if (__CUDACC_VER_MAJOR__ >= 9)
+		__syncwarp();
+#else
+		__syncthreads( );
+#endif
 		((ulong4*)ptr0)[sub] = ((ulong4*)myChunks)[sub];
 		ax0 ^= c;
 		idx0 = shuffle<2>(sPtr, sub, ax0.x, 0);
