@@ -1222,7 +1222,7 @@ __kernel void Groestl(__global ulong *states, __global uint *BranchBuf, __global
 		#pragma unroll 4
 		for(uint i = 0; i < 4; ++i)
 		{
-			volatile ulong H[8], M[8];
+			ulong H[8], M[8];
 
 			if(i < 3)
 			{
