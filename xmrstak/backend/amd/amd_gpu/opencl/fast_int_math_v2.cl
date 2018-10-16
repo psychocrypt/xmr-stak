@@ -81,8 +81,9 @@ inline uint2 fast_div_v2(const __local uint *RCP, ulong a, uint b)
 	 * If a is greater than k then we use the unsigned underflow
 	 * to check (k < a) via (xx > k).
 	 */
-	const ulong xx = k - a;
-	((uint*)&q)[1] = (xx > k) ? 1U : 0U;
+	((uint*)&q)[1] = 0u;
+	if(as_uint2(k).s1 < as_uint2(a).s1 || (as_uint2(k).s1 == as_uint2(a).s1 && as_uint2(k).s0 < as_uint2(a).s0))
+		((uint*)&q)[1] = 1U;
 #else
 	((uint*)&q)[1] = (k < a) ? 1U : 0U;
 #endif
