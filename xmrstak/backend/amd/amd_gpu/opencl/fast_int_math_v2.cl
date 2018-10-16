@@ -78,9 +78,11 @@ inline uint2 fast_div_v2(const __local uint *RCP, ulong a, uint b)
 	/* The AMD driver 14.XX is not able to compile `(k < a)`
 	 * https://github.com/fireice-uk/xmr-stak/issues/1922
 	 * This is a workaround for the broken compiler.
+	 * If a is greater than k then we use the unsigned underflow
+	 * to check (k < a) via (xx > k).
 	 */
-	const long xx = k - a;
-	((uint*)&q)[1] = (xx < 0) ? 1U : 0U;
+	const ulong xx = k - a;
+	((uint*)&q)[1] = (xx > k) ? 1U : 0U;
 #else
 	((uint*)&q)[1] = (k < a) ? 1U : 0U;
 #endif
