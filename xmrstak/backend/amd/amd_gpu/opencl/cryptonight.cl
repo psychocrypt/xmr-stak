@@ -365,7 +365,11 @@ R"===(
 #if(STRIDED_INDEX==0)
 #   define IDX(x)	(x)
 #elif(STRIDED_INDEX==1)
-#   define IDX(x)	((x) * (Threads))
+#	if (ALGO == 4)
+#		define IDX(x)   ((x) * WORKSIZE)
+#	else
+#		define IDX(x)   (mul24(((uint)(x)), Threads))
+#	endif
 #elif(STRIDED_INDEX==2)
 #   define IDX(x)	(((x) % MEM_CHUNK) + ((x) / MEM_CHUNK) * WORKSIZE * MEM_CHUNK)
 #elif(STRIDED_INDEX==3)
@@ -416,7 +420,11 @@ __kernel void JOIN(cn0,ALGO)(__global ulong *input, __global uint4 *Scratchpad, 
 #if(STRIDED_INDEX==0)
         Scratchpad += gIdx * (MEMORY >> 4);
 #elif(STRIDED_INDEX==1)
+#	if (ALGO == 4)
+		Scratchpad += (gIdx / WORKSIZE) * (MEMORY >> 4) * WORKSIZE + (gIdx % WORKSIZE);
+#	else
 		Scratchpad += gIdx;
+#	endif
 #elif(STRIDED_INDEX==2)
         Scratchpad += (gIdx / WORKSIZE) * (MEMORY >> 4) * WORKSIZE + MEM_CHUNK * (gIdx % WORKSIZE);
 #elif(STRIDED_INDEX==3)
@@ -600,7 +608,11 @@ __kernel void JOIN(cn1,ALGO) (__global uint4 *Scratchpad, __global ulong *states
 #if(STRIDED_INDEX==0)
         Scratchpad += gIdx * (MEMORY >> 4);
 #elif(STRIDED_INDEX==1)
+#	if (ALGO == 4)
+		Scratchpad += get_group_id(0) * (MEMORY >> 4) * WORKSIZE + get_local_id(0);
+#	else
 		Scratchpad += gIdx;
+#	endif
 #elif(STRIDED_INDEX==2)
         Scratchpad += get_group_id(0) * (MEMORY >> 4) * WORKSIZE + MEM_CHUNK * get_local_id(0);
 #elif(STRIDED_INDEX==3)
@@ -825,7 +837,11 @@ __kernel void JOIN(cn2,ALGO) (__global uint4 *Scratchpad, __global ulong *states
 #if(STRIDED_INDEX==0)
         Scratchpad += gIdx * (MEMORY >> 4);
 #elif(STRIDED_INDEX==1)
+#	if (ALGO == 4)
+		Scratchpad += get_group_id(0) * (MEMORY >> 4) * WORKSIZE + get_local_id(0);
+#	else
 		Scratchpad += gIdx;
+#	endif
 #elif(STRIDED_INDEX==2)
         Scratchpad += (gIdx / WORKSIZE) * (MEMORY >> 4) * WORKSIZE + MEM_CHUNK * (gIdx % WORKSIZE);
 #elif(STRIDED_INDEX==3)
@@ -867,7 +883,7 @@ __kernel void JOIN(cn2,ALGO) (__global uint4 *Scratchpad, __global ulong *states
         #pragma unroll 2
         for(int i = 0, i1 = get_local_id(1); i < (MEMORY >> 7); ++i, i1 = (i1 + 16) % (MEMORY >> 4))
         {
-            text ^= Scratchpad[IDX(i1)];
+            text ^= Scratchpad[IDX((uint)i1)];
             barrier(CLK_LOCAL_MEM_FENCE);
             text ^= *xin2_load;
 
@@ -877,7 +893,7 @@ __kernel void JOIN(cn2,ALGO) (__global uint4 *Scratchpad, __global ulong *states
 
             *xin1_store = text;
 
-            text ^= Scratchpad[IDX(i1 + 8)];
+            text ^= Scratchpad[IDX((uint)i1 + 8u)];
             barrier(CLK_LOCAL_MEM_FENCE);
             text ^= *xin1_load;
 
@@ -894,7 +910,7 @@ __kernel void JOIN(cn2,ALGO) (__global uint4 *Scratchpad, __global ulong *states
 #else
         #pragma unroll 2
         for (int i = 0; i < (MEMORY >> 7); ++i) {
-            text ^= Scratchpad[IDX((i << 3) + get_local_id(1))];
+            text ^= Scratchpad[IDX((uint)((i << 3) + get_local_id(1)))];
 
             #pragma unroll 10
             for(int j = 0; j < 10; ++j)
