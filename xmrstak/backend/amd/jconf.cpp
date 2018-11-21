@@ -106,9 +106,10 @@ bool jconf::GetThreadConfig(size_t id, thd_cfg &cfg)
 	if(!oThdConf.IsObject())
 		return false;
 
-	const Value *idx, *intensity, *w_size, *aff, *stridedIndex, *memChunk, *unroll, *compMode;
+	const Value *idx, *intensity, *extraIntensity, *w_size, *aff, *stridedIndex, *memChunk, *unroll, *compMode;
 	idx = GetObjectMember(oThdConf, "index");
 	intensity = GetObjectMember(oThdConf, "intensity");
+	extraIntensity = GetObjectMember(oThdConf, "extra_intensity");
 	w_size = GetObjectMember(oThdConf, "worksize");
 	aff = GetObjectMember(oThdConf, "affine_to_cpu");
 	stridedIndex = GetObjectMember(oThdConf, "strided_index");
@@ -116,11 +117,11 @@ bool jconf::GetThreadConfig(size_t id, thd_cfg &cfg)
 	unroll = GetObjectMember(oThdConf, "unroll");
 	compMode = GetObjectMember(oThdConf, "comp_mode");
 
-	if(idx == nullptr || intensity == nullptr || w_size == nullptr || aff == nullptr || memChunk == nullptr ||
+	if(idx == nullptr || intensity == nullptr || extraIntensity == nullptr || w_size == nullptr || aff == nullptr || memChunk == nullptr ||
 		stridedIndex == nullptr || unroll == nullptr || compMode == nullptr)
 		return false;
 
-	if(!idx->IsUint64() || !intensity->IsUint64() || !w_size->IsUint64())
+	if(!idx->IsUint64() || !intensity->IsUint64() || !extraIntensity->IsUint64() || !w_size->IsUint64())
 		return false;
 
 	if(!aff->IsUint64() && !aff->IsBool())
@@ -164,6 +165,7 @@ bool jconf::GetThreadConfig(size_t id, thd_cfg &cfg)
 	cfg.index = idx->GetUint64();
 	cfg.w_size = w_size->GetUint64();
 	cfg.intensity = intensity->GetUint64();
+	cfg.extraIntensity = extraIntensity->GetUint64();
 	cfg.compMode = compMode->GetBool();
 
 	if(aff->IsNumber())

@@ -24,6 +24,7 @@ struct GpuContext
 	/*Input vars*/
 	size_t deviceIdx;
 	size_t rawIntensity;
+	size_t rawExtraIntensity;
 	size_t workSize;
 	int stridedIndex;
 	int memChunk;
@@ -36,7 +37,7 @@ struct GpuContext
 	cl_command_queue CommandQueues;
 	cl_mem InputBuffer;
 	cl_mem OutputBuffer;
-	cl_mem ExtraBuffers[6];
+	cl_mem ExtraBuffers[7];
 	cl_program Program[2];
 	cl_kernel Kernels[2][8];
 	size_t freeMem;

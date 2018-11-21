@@ -368,7 +368,7 @@ R"===(
 #	if (ALGO == 4)
 #		define IDX(x)   ((x) * WORKSIZE)
 #	else
-#		define IDX(x)   (mul24(((uint)(x)), Threads))
+#		define IDX(x)   (mul24(((uint)(x)), BlockThreads))
 #	endif
 #elif(STRIDED_INDEX==2)
 #   define IDX(x)	(((x) % MEM_CHUNK) + ((x) / MEM_CHUNK) * WORKSIZE * MEM_CHUNK)
@@ -387,13 +387,16 @@ inline uint getIdx()
 #define JOIN(x,y) JOIN_DO(x,y)
 
 __attribute__((reqd_work_group_size(8, 8, 1)))
-__kernel void JOIN(cn0,ALGO)(__global ulong *input, __global uint4 *Scratchpad, __global ulong *states, uint Threads)
+__kernel void JOIN(cn0,ALGO)(__global ulong *input, __global uint4 *Scratchpad, __global ulong *states, uint Threads, __global uint4 *Scratchpad1)
 {
     uint ExpandedKey1[40];
     __local uint AES0[256], AES1[256], AES2[256], AES3[256];
     uint4 text;
 
     const uint gIdx = getIdx();
+	if(gIdx >= C_rawIntensity)
+		Scratchpad = Scratchpad1;
+	uint BlockThreads = gIdx < C_rawIntensity ? C_rawIntensity : C_rawExtraIntensity;
 
 	for(int i = get_local_id(1) * 8 + get_local_id(0);
 		i < 256;
@@ -417,18 +420,20 @@ __kernel void JOIN(cn0,ALGO)(__global ulong *input, __global uint4 *Scratchpad, 
     {
         states += 25 * gIdx;
 
+		uint gIdx2 = (gIdx - (gIdx < C_rawIntensity ? 0 : C_rawIntensity));
+
 #if(STRIDED_INDEX==0)
-        Scratchpad += gIdx * (MEMORY >> 4);
+        Scratchpad += gIdx2 * (MEMORY >> 4);
 #elif(STRIDED_INDEX==1)
 #	if (ALGO == 4)
-		Scratchpad += (gIdx / WORKSIZE) * (MEMORY >> 4) * WORKSIZE + (gIdx % WORKSIZE);
+		Scratchpad += (gIdx2 / WORKSIZE) * (MEMORY >> 4) * WORKSIZE + (gIdx2 % WORKSIZE);
 #	else
-		Scratchpad += gIdx;
+		Scratchpad += gIdx2;
 #	endif
 #elif(STRIDED_INDEX==2)
-        Scratchpad += (gIdx / WORKSIZE) * (MEMORY >> 4) * WORKSIZE + MEM_CHUNK * (gIdx % WORKSIZE);
+        Scratchpad += (gIdx2 / WORKSIZE) * (MEMORY >> 4) * WORKSIZE + MEM_CHUNK * (gIdx2 % WORKSIZE);
 #elif(STRIDED_INDEX==3)
-		Scratchpad += (gIdx / WORKSIZE) * (MEMORY >> 4) * WORKSIZE + (gIdx % WORKSIZE);
+		Scratchpad += (gIdx2 / WORKSIZE) * (MEMORY >> 4) * WORKSIZE + (gIdx2 % WORKSIZE);
 #endif
 
         if (get_local_id(1) == 0)
@@ -550,7 +555,8 @@ R"===(
 #endif
 
 __attribute__((reqd_work_group_size(WORKSIZE, 1, 1)))
-__kernel void JOIN(cn1,ALGO) (__global uint4 *Scratchpad, __global ulong *states, uint Threads
+__kernel void JOIN(cn1,ALGO) (__global uint4 *Scratchpad, __global ulong *states, uint Threads,
+	__global uint4 *Scratchpad1
 // cryptonight_monero || cryptonight_aeon || cryptonight_ipbc || cryptonight_stellite || cryptonight_masari || cryptonight_bittube2
 #if(ALGO == 3 || ALGO == 5 || ALGO == 6 || ALGO == 7 || ALGO == 8 || ALGO == 10)
 , __global ulong *input
@@ -581,6 +587,9 @@ __kernel void JOIN(cn1,ALGO) (__global uint4 *Scratchpad, __global ulong *states
 	uint sqrt_result;
 #endif
     const uint gIdx = getIdx();
+	if(gIdx >= C_rawIntensity)
+		Scratchpad = Scratchpad1;
+	uint BlockThreads = gIdx < C_rawIntensity ? C_rawIntensity : C_rawExtraIntensity;
 
 	for(int i = get_local_id(0); i < 256; i += WORKSIZE)
 	{
@@ -604,19 +613,20 @@ __kernel void JOIN(cn1,ALGO) (__global uint4 *Scratchpad, __global ulong *states
 	if(gIdx < Threads)
 #endif
     {
+		uint gIdx2 = (gIdx - (gIdx < C_rawIntensity ? 0 : C_rawIntensity));
         states += 25 * gIdx;
 #if(STRIDED_INDEX==0)
-        Scratchpad += gIdx * (MEMORY >> 4);
+        Scratchpad += gIdx2 * (MEMORY >> 4);
 #elif(STRIDED_INDEX==1)
 #	if (ALGO == 4)
-		Scratchpad += get_group_id(0) * (MEMORY >> 4) * WORKSIZE + get_local_id(0);
+		Scratchpad += (gIdx2 / WORKSIZE) * (MEMORY >> 4) * WORKSIZE + (gIdx2 % WORKSIZE);
 #	else
-		Scratchpad += gIdx;
+		Scratchpad += gIdx2;
 #	endif
 #elif(STRIDED_INDEX==2)
-        Scratchpad += get_group_id(0) * (MEMORY >> 4) * WORKSIZE + MEM_CHUNK * get_local_id(0);
+        Scratchpad += (gIdx2 / WORKSIZE) * (MEMORY >> 4) * WORKSIZE + MEM_CHUNK * (gIdx2 % WORKSIZE);
 #elif(STRIDED_INDEX==3)
-		Scratchpad += (gIdx / WORKSIZE) * (MEMORY >> 4) * WORKSIZE + (gIdx % WORKSIZE);
+		Scratchpad += (gIdx2 / WORKSIZE) * (MEMORY >> 4) * WORKSIZE + (gIdx2 % WORKSIZE);
 #endif
 
         a[0] = states[0] ^ states[4];
@@ -804,13 +814,17 @@ __kernel void JOIN(cn1,ALGO) (__global uint4 *Scratchpad, __global ulong *states
 R"===(
 
 __attribute__((reqd_work_group_size(8, 8, 1)))
-__kernel void JOIN(cn2,ALGO) (__global uint4 *Scratchpad, __global ulong *states, __global uint *Branch0, __global uint *Branch1, __global uint *Branch2, __global uint *Branch3, uint Threads)
+__kernel void JOIN(cn2,ALGO) (__global uint4 *Scratchpad, __global ulong *states, __global uint *Branch0, __global uint *Branch1,
+		__global uint *Branch2, __global uint *Branch3, uint Threads, __global uint4 *Scratchpad1)
 {
     __local uint AES0[256], AES1[256], AES2[256], AES3[256];
     uint ExpandedKey2[40];
     uint4 text;
 
     const uint gIdx = getIdx();
+	if(gIdx >= C_rawIntensity)
+		Scratchpad = Scratchpad1;
+	uint BlockThreads = gIdx < C_rawIntensity ? C_rawIntensity : C_rawExtraIntensity;
 
     for (int i = get_local_id(1) * 8 + get_local_id(0); i < 256; i += 8 * 8) {
         const uint tmp = AES0_C[i];
@@ -833,19 +847,20 @@ __kernel void JOIN(cn2,ALGO) (__global uint4 *Scratchpad, __global ulong *states
     if(gIdx < Threads)
 #endif
     {
+		uint gIdx2 = (gIdx - (gIdx < C_rawIntensity ? 0 : C_rawIntensity));
         states += 25 * gIdx;
 #if(STRIDED_INDEX==0)
-        Scratchpad += gIdx * (MEMORY >> 4);
+        Scratchpad += gIdx2 * (MEMORY >> 4);
 #elif(STRIDED_INDEX==1)
 #	if (ALGO == 4)
-		Scratchpad += get_group_id(0) * (MEMORY >> 4) * WORKSIZE + get_local_id(0);
+		Scratchpad += (gIdx2 / WORKSIZE) * (MEMORY >> 4) * WORKSIZE + (gIdx2 % WORKSIZE);
 #	else
-		Scratchpad += gIdx;
+		Scratchpad += gIdx2;
 #	endif
 #elif(STRIDED_INDEX==2)
-        Scratchpad += (gIdx / WORKSIZE) * (MEMORY >> 4) * WORKSIZE + MEM_CHUNK * (gIdx % WORKSIZE);
+        Scratchpad += (gIdx2 / WORKSIZE) * (MEMORY >> 4) * WORKSIZE + MEM_CHUNK * (gIdx2 % WORKSIZE);
 #elif(STRIDED_INDEX==3)
-		Scratchpad += (gIdx / WORKSIZE) * (MEMORY >> 4) * WORKSIZE + (gIdx % WORKSIZE);
+		Scratchpad += (gIdx2 / WORKSIZE) * (MEMORY >> 4) * WORKSIZE + (gIdx2 % WORKSIZE);
 #endif
 
         #if defined(__Tahiti__) || defined(__Pitcairn__)

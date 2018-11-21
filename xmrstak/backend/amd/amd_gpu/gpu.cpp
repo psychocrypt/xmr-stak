@@ -42,6 +42,7 @@
 #include <sys/stat.h>
 #endif
 
+#include <CL/cl_ext.h>
 
 #ifdef _WIN32
 #include <windows.h>
@@ -313,8 +314,8 @@ size_t InitOpenCLGpu(cl_context opencl_ctx, GpuContext* ctx, const char* source_
 		cn_select_memory(::jconf::inst()->GetCurrentCoinSelection().GetDescription(1).GetMiningAlgoRoot())
 	);
 
-	size_t g_thd = ctx->rawIntensity;
-	ctx->ExtraBuffers[0] = clCreateBuffer(opencl_ctx, CL_MEM_READ_WRITE, scratchPadSize * g_thd, NULL, &ret);
+	size_t g_thd = ctx->rawIntensity + ctx->rawExtraIntensity;
+	ctx->ExtraBuffers[0] = clCreateBuffer(opencl_ctx, CL_MEM_READ_WRITE, scratchPadSize * ctx->rawIntensity, NULL, &ret);
 	if(ret != CL_SUCCESS)
 	{
 		printer::inst()->print_msg(L1,"Error %s when calling clCreateBuffer to create hash scratchpads buffer.", err_to_str(ret));
@@ -365,6 +366,38 @@ size_t InitOpenCLGpu(cl_context opencl_ctx, GpuContext* ctx, const char* source_
 	if(ret != CL_SUCCESS)
 	{
 		printer::inst()->print_msg(L1,"Error %s when calling clCreateBuffer to create output buffer.", err_to_str(ret));
+		return ERR_OCL_API;
+	}
+
+	// query vendor
+	std::vector<char> devVendorVec(1024);
+	if((ret = clGetDeviceInfo(ctx->DeviceID, CL_DEVICE_VENDOR, devVendorVec.size(), devVendorVec.data(), NULL)) != CL_SUCCESS)
+	{
+		printer::inst()->print_msg(L1,"WARNING: %s when calling clGetDeviceInfo to get the device vendor name", err_to_str(ret));
+	}
+
+	std::string devVendor(devVendorVec.data());
+	bool isAMDDevice = devVendor.find("Advanced Micro Devices") != std::string::npos || devVendor.find("AMD") != std::string::npos;
+
+
+
+	cl_mem_flags memFlags = CL_MEM_READ_WRITE;
+
+#ifdef CL_MEM_USE_PERSISTENT_MEM_AMD
+	if(isAMDDevice)
+	{
+		printer::inst()->print_msg(L1,"AMD extra memory is available. You can use the option 'extra_intensity'");
+		memFlags |= CL_MEM_USE_PERSISTENT_MEM_AMD;
+	}
+#else
+	printer::inst()->print_msg(L1,"WARNING: AMD extra memory is NOT available. You can use the option 'extra_intensity' but is has maybe no effect.");
+#endif
+	if(ctx->rawExtraIntensity > 0)
+		ctx->ExtraBuffers[6] = clCreateBuffer(opencl_ctx, memFlags, scratchPadSize * ctx->rawExtraIntensity, NULL, &ret);
+
+	if(ret != CL_SUCCESS)
+	{
+		printer::inst()->print_msg(L1,"Error %s when calling clCreateBuffer to create hash extra scratchpads buffer.", err_to_str(ret));
 		return ERR_OCL_API;
 	}
 
@@ -419,6 +452,8 @@ size_t InitOpenCLGpu(cl_context opencl_ctx, GpuContext* ctx, const char* source_
 		options += " -DMEMORY=" + std::to_string(hashMemSize) + "LLU";
 		options += " -DALGO=" + std::to_string(miner_algo[ii]);
 		options += " -DCN_UNROLL=" + std::to_string(ctx->unroll);
+		options += " -DC_rawExtraIntensity=" + std::to_string(ctx->rawExtraIntensity);
+		options += " -DC_rawIntensity=" + std::to_string(ctx->rawIntensity);
 		/* AMD driver output is something like: `1445.5 (VM)`
 		 * and is mapped to `14` only. The value is only used for a compiler
 		 * workaround.
@@ -939,12 +974,21 @@ size_t InitOpenCL(GpuContext* ctx, size_t num_gpus, size_t platform_idx)
 	for(int i = 0; i < num_gpus; ++i)
 	{
 		const std::string backendName = xmrstak::params::inst().openCLVendor;
-		if( (ctx[i].stridedIndex == 2 || ctx[i].stridedIndex == 3) && (ctx[i].rawIntensity % ctx[i].workSize) != 0)
+		if(ctx[i].rawExtraIntensity != 0 || (ctx[i].stridedIndex == 2 || ctx[i].stridedIndex == 3) && (ctx[i].rawIntensity % ctx[i].workSize) != 0)
 		{
 			size_t reduced_intensity = (ctx[i].rawIntensity / ctx[i].workSize) * ctx[i].workSize;
 			ctx[i].rawIntensity = reduced_intensity;
 			printer::inst()->print_msg(L0, "WARNING %s: gpu %d intensity is not a multiple of 'worksize', auto reduce intensity to %d", backendName.c_str(), ctx[i].deviceIdx, int(reduced_intensity));
 		}
+		
+		if(ctx[i].rawExtraIntensity != 0)
+		{
+			size_t validExtraIntensity = (ctx[i].rawExtraIntensity / ctx[i].workSize) * ctx[i].workSize;
+			if(validExtraIntensity != ctx[i].rawExtraIntensity)
+				printer::inst()->print_msg(L1,"WARNING adjust extra intensity from %u to %u", (uint32_t)ctx->rawExtraIntensity, (uint32_t)validExtraIntensity);
+			ctx[i].rawExtraIntensity = validExtraIntensity;
+		}
+
 
 		if((ret = InitOpenCLGpu(opencl_ctx, &ctx[i], source_code.c_str())) != ERR_SUCCESS)
 		{
@@ -968,7 +1012,7 @@ size_t XMRSetJob(GpuContext* ctx, uint8_t* input, size_t input_len, uint64_t tar
 	input[input_len] = 0x01;
 	memset(input + input_len + 1, 0, 88 - input_len - 1);
 
-	cl_uint numThreads = ctx->rawIntensity;
+	cl_uint numThreads = ctx->rawIntensity + ctx->rawExtraIntensity;
 
 	if((ret = clEnqueueWriteBuffer(ctx->CommandQueues, ctx->InputBuffer, CL_TRUE, 0, 88, input, 0, NULL, NULL)) != CL_SUCCESS)
 	{
@@ -1003,6 +1047,13 @@ size_t XMRSetJob(GpuContext* ctx, uint8_t* input, size_t input_len, uint64_t tar
 		return(ERR_OCL_API);
 	}
 
+	// ExtraScratchpads
+	if((ret = clSetKernelArg(ctx->Kernels[kernel_storage][0], 4, sizeof(cl_mem), ctx->ExtraBuffers + 6)) != CL_SUCCESS)
+	{
+		printer::inst()->print_msg(L1,"Error %s when calling clSetKernelArg for kernel 0, argument 4.(extra buffer)", err_to_str(ret));
+		return(ERR_OCL_API);
+	}
+
 	// CN1 Kernel
 
 	// Scratchpads
@@ -1026,10 +1077,17 @@ size_t XMRSetJob(GpuContext* ctx, uint8_t* input, size_t input_len, uint64_t tar
 		return(ERR_OCL_API);
 	}
 
+	// ExtraScratchpads
+	if((ret = clSetKernelArg(ctx->Kernels[kernel_storage][1], 3, sizeof(cl_mem), ctx->ExtraBuffers + 6)) != CL_SUCCESS)
+	{
+		printer::inst()->print_msg(L1,"Error %s when calling clSetKernelArg for kernel 1, argument 3.(extra buffer)", err_to_str(ret));
+		return(ERR_OCL_API);
+	}
+
 	if(miner_algo == cryptonight_monero || miner_algo == cryptonight_aeon || miner_algo == cryptonight_ipbc || miner_algo == cryptonight_stellite || miner_algo == cryptonight_masari || miner_algo == cryptonight_bittube2)
 	{
 		// Input
-		if ((ret = clSetKernelArg(ctx->Kernels[kernel_storage][1], 3, sizeof(cl_mem), &ctx->InputBuffer)) != CL_SUCCESS)
+		if ((ret = clSetKernelArg(ctx->Kernels[kernel_storage][1], 4, sizeof(cl_mem), &ctx->InputBuffer)) != CL_SUCCESS)
 		{
 			printer::inst()->print_msg(L1, "Error %s when calling clSetKernelArg for kernel 1, argument 4(input buffer).", err_to_str(ret));
 			return ERR_OCL_API;
@@ -1086,6 +1144,13 @@ size_t XMRSetJob(GpuContext* ctx, uint8_t* input, size_t input_len, uint64_t tar
 		return(ERR_OCL_API);
 	}
 
+	// ExtraScratchpads
+	if((ret = clSetKernelArg(ctx->Kernels[kernel_storage][2], 7, sizeof(cl_mem), ctx->ExtraBuffers + 6)) != CL_SUCCESS)
+	{
+		printer::inst()->print_msg(L1,"Error %s when calling clSetKernelArg for kernel 2, argument 7.(extra buffer)", err_to_str(ret));
+		return(ERR_OCL_API);
+	}
+
 	for(int i = 0; i < 4; ++i)
 	{
 		// States
@@ -1136,7 +1201,7 @@ size_t XMRRunJob(GpuContext* ctx, cl_uint* HashOutput, xmrstak_algo miner_algo)
 	size_t BranchNonces[4];
 	memset(BranchNonces,0,sizeof(size_t)*4);
 
-	size_t g_intensity = ctx->rawIntensity;
+	size_t g_intensity = ctx->rawIntensity + ctx->rawExtraIntensity;
 	size_t w_size = ctx->workSize;
 	size_t g_thd = g_intensity;
 
