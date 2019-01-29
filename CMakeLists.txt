@@ -152,6 +152,9 @@ if(CUDA_ENABLE)
                 set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS} -std=c++11")
             endif()
 
+            # required for cryptonight_gpu (fast floating point operations are not allowed)
+            set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS} --fmad=false --prec-div=true --ftz=false")
+
             # avoid that nvcc in CUDA 8 complains about sm_20 pending removal
             if(CUDA_VERSION VERSION_EQUAL 8.0)
                 set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS} -Wno-deprecated-gpu-targets")
