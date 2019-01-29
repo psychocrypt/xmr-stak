@@ -283,6 +283,14 @@ else()
 endif()
 
 ################################################################################
+# Explicit march setting for Clang
+################################################################################
+
+if ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang")
+	set_source_files_properties(xmrstak/backend/cpu/crypto/cn_gpu_avx.cpp PROPERTIES COMPILE_FLAGS "-mavx2")
+endif()
+
+################################################################################
 # Find PThreads
 ################################################################################
 
