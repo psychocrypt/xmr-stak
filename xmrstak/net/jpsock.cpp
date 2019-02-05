@@ -655,7 +655,7 @@ bool jpsock::cmd_login()
 	return true;
 }
 
-bool jpsock::cmd_submit(const char* sJobId, uint32_t iNonce, const uint8_t* bResult, const char* backend_name, uint64_t backend_hashcount, uint64_t total_hashcount, xmrstak_algo algo)
+bool jpsock::cmd_submit(const char* sJobId, uint32_t iNonce, const uint8_t* bResult, const char* backend_name, uint64_t backend_hashcount, uint64_t total_hashcount, xmrstak_algo_id algo)
 {
 	char cmd_buffer[1024];
 	char sNonce[9];

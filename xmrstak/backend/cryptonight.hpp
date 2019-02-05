@@ -3,7 +3,7 @@
 #include <inttypes.h>
 #include <type_traits>
 
-enum xmrstak_algo
+enum xmrstak_algo_id
 {
 	invalid_algo = 0,
 	cryptonight = 1,
@@ -22,14 +22,81 @@ enum xmrstak_algo
 	cryptonight_turtle = 14
 };
 
+inline uint32_t cn_mask_bytes(xmrstak_algo_id algo)
+{
+	switch(algo)
+	{
+	case cryptonight_gpu:
+		return 64u;
+	default:
+		return 16u;
+	}
+}
+
+struct xmrstak_algo
+{
+	xmrstak_algo(xmrstak_algo_id algorithm) : algo(algorithm)
+	{
+	}
+	xmrstak_algo(xmrstak_algo_id algorithm, uint32_t iteration) : algo(algorithm), iter(iteration)
+	{
+	}
+	xmrstak_algo(xmrstak_algo_id algorithm, uint32_t iteration, uint32_t memory) : algo(algorithm), iter(iteration), mem(memory)
+	{
+	}
+	xmrstak_algo(xmrstak_algo_id algorithm, uint32_t iteration, uint32_t memory, uint32_t memMask) : algo(algorithm), iter(iteration), mem(memory), maskByte(memMask)
+	{
+	}
+
+	operator xmrstak_algo_id() const
+	{
+		return algo;
+	}
+
+	xmrstak_algo_id id() const
+	{
+		return algo;
+	}
+
+	size_t Mem() const
+	{
+		if(algo == invalid_algo)
+			return 0;
+		else
+			return mem;
+	}
+
+	uint32_t Iter() const
+	{
+		return iter;
+	}
+
+	uint32_t Mask() const
+	{
+		const uint32_t m_byte = cn_mask_bytes(algo);
+		if(maskByte == 0)
+			return ((mem - 1u) / m_byte) * m_byte;
+		else
+			return maskByte;
+	}
+
+	xmrstak_algo_id algo = invalid_algo;
+	uint32_t iter = 0;
+	size_t mem = 2u * 1024u * 1024u;
+	uint32_t maskByte = 0;
+};
+
 // define aeon settings
 constexpr size_t CRYPTONIGHT_LITE_MEMORY = 1 * 1024 * 1024;
 constexpr uint32_t CRYPTONIGHT_LITE_MASK = 0xFFFF0;
 constexpr uint32_t CRYPTONIGHT_LITE_ITER = 0x40000;
 
-constexpr size_t CRYPTONIGHT_MEMORY = 2 * 1024 * 1024;
-constexpr uint32_t CRYPTONIGHT_MASK = 0x1FFFF0;
-constexpr uint32_t CRYPTONIGHT_ITER = 0x80000;
+constexpr size_t CN_MEMORY = 2 * 1024 * 1024;
+constexpr uint32_t CN_ITER = 0x80000;
+
+constexpr uint32_t CN_GPU_MASK = 0x1FFFC0;
+constexpr uint32_t CN_GPU_ITER = 0xC000;
+
 
 constexpr size_t CRYPTONIGHT_HEAVY_MEMORY = 4 * 1024 * 1024;
 constexpr uint32_t CRYPTONIGHT_HEAVY_MASK = 0x3FFFF0;
@@ -40,228 +107,8 @@ constexpr uint32_t CRYPTONIGHT_GPU_ITER = 0xC000;
 
 constexpr uint32_t CRYPTONIGHT_MASARI_ITER = 0x40000;
 
-constexpr uint32_t CRYPTONIGHT_SUPERFAST_ITER = 0x20000; 
+constexpr uint32_t CRYPTONIGHT_SUPERFAST_ITER = 0x20000;
 
 constexpr size_t CRYPTONIGHT_TURTLE_MEMORY = 256 * 1024;
 constexpr uint32_t CRYPTONIGHT_TURTLE_MASK = 0x1FFF0;
 constexpr uint32_t CRYPTONIGHT_TURTLE_ITER = 0x10000;
-
-template<xmrstak_algo ALGO>
-inline constexpr size_t cn_select_memory() { return 0; }
-
-template<>
-inline constexpr size_t cn_select_memory<cryptonight>() { return CRYPTONIGHT_MEMORY; }
-
-template<>
-inline constexpr size_t cn_select_memory<cryptonight_lite>() { return CRYPTONIGHT_LITE_MEMORY; }
-
-template<>
-inline constexpr size_t cn_select_memory<cryptonight_monero>() { return CRYPTONIGHT_MEMORY; }
-
-template<>
-inline constexpr size_t cn_select_memory<cryptonight_monero_v8>() { return CRYPTONIGHT_MEMORY; }
-
-template<>
-inline constexpr size_t cn_select_memory<cryptonight_heavy>() { return CRYPTONIGHT_HEAVY_MEMORY; }
-
-template<>
-inline constexpr size_t cn_select_memory<cryptonight_aeon>() { return CRYPTONIGHT_LITE_MEMORY; }
-
-template<>
-inline constexpr size_t cn_select_memory<cryptonight_ipbc>() { return CRYPTONIGHT_LITE_MEMORY; }
-
-template<>
-inline constexpr size_t cn_select_memory<cryptonight_stellite>() { return CRYPTONIGHT_MEMORY; }
-
-template<>
-inline constexpr size_t cn_select_memory<cryptonight_masari>() { return CRYPTONIGHT_MEMORY; }
-
-template<>
-inline constexpr size_t cn_select_memory<cryptonight_haven>() { return CRYPTONIGHT_HEAVY_MEMORY; }
-
-template<>
-inline constexpr size_t cn_select_memory<cryptonight_bittube2>() { return CRYPTONIGHT_HEAVY_MEMORY; }
-
-template<>
-inline constexpr size_t cn_select_memory<cryptonight_superfast>() { return CRYPTONIGHT_MEMORY; } 
-
-template<>
-inline constexpr size_t cn_select_memory<cryptonight_gpu>() { return CRYPTONIGHT_MEMORY; } 
-
-template<>
-inline constexpr size_t cn_select_memory<cryptonight_turtle>() { return CRYPTONIGHT_TURTLE_MEMORY; }
-
-inline size_t cn_select_memory(xmrstak_algo algo)
-{
-	switch(algo)
-	{
-	case cryptonight_stellite:
-	case cryptonight_monero:
-	case cryptonight_monero_v8:
-	case cryptonight_masari:
-	case cryptonight:
-	case cryptonight_superfast: 
-	case cryptonight_gpu:
-		return CRYPTONIGHT_MEMORY;
-	case cryptonight_ipbc:
-	case cryptonight_aeon:
-	case cryptonight_lite:
-		return CRYPTONIGHT_LITE_MEMORY;
-	case cryptonight_bittube2:
-	case cryptonight_haven:
-	case cryptonight_heavy:
-		return CRYPTONIGHT_HEAVY_MEMORY;
-	case cryptonight_turtle:
-		return CRYPTONIGHT_TURTLE_MEMORY;
-	default:
-		return 0;
-	}
-}
-
-template<xmrstak_algo ALGO>
-inline constexpr uint32_t cn_select_mask() { return 0; }
-
-template<>
-inline constexpr uint32_t cn_select_mask<cryptonight>() { return CRYPTONIGHT_MASK; }
-
-template<>
-inline constexpr uint32_t cn_select_mask<cryptonight_lite>() { return CRYPTONIGHT_LITE_MASK; }
-
-template<>
-inline constexpr uint32_t cn_select_mask<cryptonight_monero>() { return CRYPTONIGHT_MASK; }
-
-template<>
-inline constexpr uint32_t cn_select_mask<cryptonight_monero_v8>() { return CRYPTONIGHT_MASK; }
-
-template<>
-inline constexpr uint32_t cn_select_mask<cryptonight_heavy>() { return CRYPTONIGHT_HEAVY_MASK; }
-
-template<>
-inline constexpr uint32_t cn_select_mask<cryptonight_aeon>() { return CRYPTONIGHT_LITE_MASK; }
-
-template<>
-inline constexpr uint32_t cn_select_mask<cryptonight_ipbc>() { return CRYPTONIGHT_LITE_MASK; }
-
-template<>
-inline constexpr uint32_t cn_select_mask<cryptonight_stellite>() { return CRYPTONIGHT_MASK; }
-
-template<>
-inline constexpr uint32_t cn_select_mask<cryptonight_masari>() { return CRYPTONIGHT_MASK; }
-
-template<>
-inline constexpr uint32_t cn_select_mask<cryptonight_haven>() { return CRYPTONIGHT_HEAVY_MASK; }
-
-template<>
-inline constexpr uint32_t cn_select_mask<cryptonight_bittube2>() { return CRYPTONIGHT_HEAVY_MASK; }
-
-template<>
-inline constexpr uint32_t cn_select_mask<cryptonight_superfast>() { return CRYPTONIGHT_MASK; } 
-
-template<>
-inline constexpr uint32_t cn_select_mask<cryptonight_gpu>() { return CRYPTONIGHT_GPU_MASK; } 
-
-template<>
-inline constexpr uint32_t cn_select_mask<cryptonight_turtle>() { return CRYPTONIGHT_TURTLE_MASK; }
-
-inline size_t cn_select_mask(xmrstak_algo algo)
-{
-	switch(algo)
-	{
-	case cryptonight_stellite:
-	case cryptonight_monero:
-	case cryptonight_monero_v8:
-	case cryptonight_masari:
-	case cryptonight:
-	case cryptonight_superfast: 
-		return CRYPTONIGHT_MASK;
-	case cryptonight_ipbc:
-	case cryptonight_aeon:
-	case cryptonight_lite:
-		return CRYPTONIGHT_LITE_MASK;
-	case cryptonight_bittube2:
-	case cryptonight_haven:
-	case cryptonight_heavy:
-		return CRYPTONIGHT_HEAVY_MASK;
-	case cryptonight_gpu:
-		return CRYPTONIGHT_GPU_MASK;
-	case cryptonight_turtle:
-		return CRYPTONIGHT_TURTLE_MASK;
-	default:
-		return 0;
-	}
-}
-
-template<xmrstak_algo ALGO>
-inline constexpr uint32_t cn_select_iter() { return 0; }
-
-template<>
-inline constexpr uint32_t cn_select_iter<cryptonight>() { return CRYPTONIGHT_ITER; }
-
-template<>
-inline constexpr uint32_t cn_select_iter<cryptonight_lite>() { return CRYPTONIGHT_LITE_ITER; }
-
-template<>
-inline constexpr uint32_t cn_select_iter<cryptonight_monero>() { return CRYPTONIGHT_ITER; }
-
-template<>
-inline constexpr uint32_t cn_select_iter<cryptonight_monero_v8>() { return CRYPTONIGHT_ITER; }
-
-template<>
-inline constexpr uint32_t cn_select_iter<cryptonight_heavy>() { return CRYPTONIGHT_HEAVY_ITER; }
-
-template<>
-inline constexpr uint32_t cn_select_iter<cryptonight_aeon>() { return CRYPTONIGHT_LITE_ITER; }
-
-template<>
-inline constexpr uint32_t cn_select_iter<cryptonight_ipbc>() { return CRYPTONIGHT_LITE_ITER; }
-
-template<>
-inline constexpr uint32_t cn_select_iter<cryptonight_stellite>() { return CRYPTONIGHT_ITER; }
-
-template<>
-inline constexpr uint32_t cn_select_iter<cryptonight_masari>() { return CRYPTONIGHT_MASARI_ITER; }
-
-template<>
-inline constexpr uint32_t cn_select_iter<cryptonight_haven>() { return CRYPTONIGHT_HEAVY_ITER; }
-
-template<>
-inline constexpr uint32_t cn_select_iter<cryptonight_bittube2>() { return CRYPTONIGHT_HEAVY_ITER; }
-
-template<>
-inline constexpr uint32_t cn_select_iter<cryptonight_superfast>() { return CRYPTONIGHT_SUPERFAST_ITER; } 
-
-template<>
-inline constexpr uint32_t cn_select_iter<cryptonight_gpu>() { return CRYPTONIGHT_GPU_ITER; } 
-
-template<>
-inline constexpr uint32_t cn_select_iter<cryptonight_turtle>() { return CRYPTONIGHT_TURTLE_ITER; }
-
-inline size_t cn_select_iter(xmrstak_algo algo)
-{
-	switch(algo)
-	{
-	case cryptonight_stellite:
-	case cryptonight_monero:
-	case cryptonight_monero_v8:
-	case cryptonight:
-		return CRYPTONIGHT_ITER;
-	case cryptonight_ipbc:
-	case cryptonight_aeon:
-	case cryptonight_lite:
-		return CRYPTONIGHT_LITE_ITER;
-	case cryptonight_bittube2:
-	case cryptonight_haven:
-	case cryptonight_heavy:
-		return CRYPTONIGHT_HEAVY_ITER;
-	case cryptonight_masari:
-		return CRYPTONIGHT_MASARI_ITER;
-	case cryptonight_superfast:
-		return CRYPTONIGHT_SUPERFAST_ITER;
-	case cryptonight_gpu:
-		return CRYPTONIGHT_GPU_ITER;
-	case cryptonight_turtle:
-		return CRYPTONIGHT_TURTLE_ITER;
-	default:
-		return 0;
-	}
-}

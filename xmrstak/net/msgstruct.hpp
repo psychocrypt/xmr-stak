@@ -33,10 +33,10 @@ struct job_result
 	char		sJobID[64];
 	uint32_t	iNonce;
 	uint32_t	iThreadId;
-	xmrstak_algo algorithm = invalid_algo;
+	xmrstak_algo_id algorithm = invalid_algo;
 
 	job_result() {}
-	job_result(const char* sJobID, uint32_t iNonce, const uint8_t* bResult, uint32_t iThreadId, xmrstak_algo algo) :
+	job_result(const char* sJobID, uint32_t iNonce, const uint8_t* bResult, uint32_t iThreadId, xmrstak_algo_id algo) :
 		iNonce(iNonce), iThreadId(iThreadId), algorithm(algo)
 	{
 		memcpy(this->sJobID, sJobID, sizeof(job_result::sJobID));

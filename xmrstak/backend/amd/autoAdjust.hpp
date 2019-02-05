@@ -88,7 +88,7 @@ private:
 		size_t hashMemSize = 0;
 		for(const auto algo : neededAlgorithms)
 		{
-			hashMemSize = std::max(hashMemSize, cn_select_memory(algo));
+			hashMemSize = algo.Mem();
 		}
 
 		std::string conf;
