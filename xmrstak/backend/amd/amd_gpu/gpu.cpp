@@ -610,6 +610,12 @@ size_t InitOpenCLGpu(cl_context opencl_ctx, GpuContext* ctx, const char* source_
 		// append algorithm number to kernel name
 		for(int k = 0; k < 3; k++)
 			KernelNames[k] += std::to_string(miner_algo);
+		
+		if(miner_algo == cryptonight_gpu)
+		{
+			KernelNames.push_back("cn00_cn_gpu");
+			KernelNames[7] += std::to_string(miner_algo);
+		}
 
 		for(int i = 0; i < KernelNames.size(); ++i)
 		{
@@ -1048,6 +1054,33 @@ size_t XMRSetJob(GpuContext* ctx, uint8_t* input, size_t input_len, uint64_t tar
 		printer::inst()->print_msg(L1,"Error %s when calling clSetKernelArg for kernel 0, argument 3.", err_to_str(ret));
 		return(ERR_OCL_API);
 	}
+	
+		if((ret = clSetKernelArg(Kernels[7], 0, sizeof(cl_mem), &ctx->InputBuffer)) != CL_SUCCESS)
+	{
+		printer::inst()->print_msg(L1,"Error %s when calling clSetKernelArg for kernel 0, argument 0.", err_to_str(ret));
+		return ERR_OCL_API;
+	}
+
+	// Scratchpads
+	if((ret = clSetKernelArg(Kernels[7], 1, sizeof(cl_mem), ctx->ExtraBuffers + 0)) != CL_SUCCESS)
+	{
+		printer::inst()->print_msg(L1,"Error %s when calling clSetKernelArg for kernel 0, argument 1.", err_to_str(ret));
+		return ERR_OCL_API;
+	}
+
+	// States
+	if((ret = clSetKernelArg(Kernels[7], 2, sizeof(cl_mem), ctx->ExtraBuffers + 1)) != CL_SUCCESS)
+	{
+		printer::inst()->print_msg(L1,"Error %s when calling clSetKernelArg for kernel 0, argument 2.", err_to_str(ret));
+		return ERR_OCL_API;
+	}
+
+	// Threads
+	if((ret = clSetKernelArg(Kernels[7], 3, sizeof(cl_uint), &numThreads)) != CL_SUCCESS)
+	{
+		printer::inst()->print_msg(L1,"Error %s when calling clSetKernelArg for kernel 0, argument 3.", err_to_str(ret));
+		return(ERR_OCL_API);
+	}
 
 	// CN1 Kernel
 
@@ -1327,6 +1360,14 @@ size_t XMRRunJob(GpuContext* ctx, cl_uint* HashOutput, xmrstak_algo miner_algo)
 
 	size_t Nonce[2] = {ctx->Nonce, 1}, gthreads[2] = { g_thd, 8 }, lthreads[2] = { 8, 8 };
 	if((ret = clEnqueueNDRangeKernel(ctx->CommandQueues, Kernels[0], 2, Nonce, gthreads, lthreads, 0, NULL, NULL)) != CL_SUCCESS)
+	{
+		printer::inst()->print_msg(L1,"Error %s when calling clEnqueueNDRangeKernel for kernel %d.", err_to_str(ret), 0);
+		return ERR_OCL_API;
+	}
+	
+	size_t thd = 64;
+	size_t intens = g_thd * thd;
+	if((ret = clEnqueueNDRangeKernel(ctx->CommandQueues, Kernels[7], 1, 0, &intens, &thd, 0, NULL, NULL)) != CL_SUCCESS)
 	{
 		printer::inst()->print_msg(L1,"Error %s when calling clEnqueueNDRangeKernel for kernel %d.", err_to_str(ret), 0);
 		return ERR_OCL_API;

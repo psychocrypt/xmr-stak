@@ -188,7 +188,7 @@ static const __constant uint keccakf_piln[24] =
     15, 23, 19, 13, 12, 2, 20, 14, 22, 9,  6,  1
 };
 
-inline void keccakf1600_1(ulong st[25])
+inline void keccakf1600_1(ulong st[])
 {
     int i, round;
     ulong t, bc[5];
@@ -202,35 +202,22 @@ inline void keccakf1600_1(ulong st[25])
         bc[3] = st[3] ^ st[8] ^ st[13] ^ st[18] ^ st[23] ^ rotate(st[0] ^ st[5] ^ st[10] ^ st[15] ^ st[20], 1UL);
         bc[4] = st[4] ^ st[9] ^ st[14] ^ st[19] ^ st[24] ^ rotate(st[1] ^ st[6] ^ st[11] ^ st[16] ^ st[21], 1UL);
 
-        st[0] ^= bc[4];
-        st[5] ^= bc[4];
-        st[10] ^= bc[4];
-        st[15] ^= bc[4];
-        st[20] ^= bc[4];
+		
+		for(int a = 0; a < 5; ++a)
+			st[a*5] ^= bc[4];
+			
+		for(int a = 0; a < 5; ++a)
+			st[a*5+1] ^= bc[0];
+			
+		for(int a = 0; a < 5; ++a)
+			st[a*5+2] ^= bc[1];
 
-        st[1] ^= bc[0];
-        st[6] ^= bc[0];
-        st[11] ^= bc[0];
-        st[16] ^= bc[0];
-        st[21] ^= bc[0];
+					for(int a = 0; a < 5; ++a)
+			st[a*5+3] ^= bc[2];
 
-        st[2] ^= bc[1];
-        st[7] ^= bc[1];
-        st[12] ^= bc[1];
-        st[17] ^= bc[1];
-        st[22] ^= bc[1];
+		for(int a = 0; a < 5; ++a)
+			st[a*5+4] ^= bc[3];
 
-        st[3] ^= bc[2];
-        st[8] ^= bc[2];
-        st[13] ^= bc[2];
-        st[18] ^= bc[2];
-        st[23] ^= bc[2];
-
-        st[4] ^= bc[3];
-        st[9] ^= bc[3];
-        st[14] ^= bc[3];
-        st[19] ^= bc[3];
-        st[24] ^= bc[3];
 
         // Rho Pi
         t = st[1];
@@ -274,11 +261,13 @@ void keccakf1600_2(__local ulong *st)
         bc[3] = st[3] ^ st[8] ^ st[13] ^ st[18] ^ st[23] ^ rotate(st[0] ^ st[5] ^ st[10] ^ st[15] ^ st[20], 1UL);
         bc[4] = st[4] ^ st[9] ^ st[14] ^ st[19] ^ st[24] ^ rotate(st[1] ^ st[6] ^ st[11] ^ st[16] ^ st[21], 1UL);
 
-        st[0] ^= bc[4];
-        st[5] ^= bc[4];
-        st[10] ^= bc[4];
-        st[15] ^= bc[4];
-        st[20] ^= bc[4];
+		for(int a = 0; a < 5; ++a)
+			st[a*5] ^= bc[4];
+       // st[0] ^= bc[4];
+        //st[5] ^= bc[4];
+        //st[10] ^= bc[4];
+        //st[15] ^= bc[4];
+        //st[20] ^= bc[4];
 
         st[1] ^= bc[0];
         st[6] ^= bc[0];
