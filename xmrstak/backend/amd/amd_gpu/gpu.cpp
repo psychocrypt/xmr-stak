@@ -629,6 +629,7 @@ size_t InitOpenCLGpu(cl_context opencl_ctx, GpuContext* ctx, const char* source_
 		if(miner_algo == cryptonight_gpu)
 		{
 			KernelNames.push_back(std::string("cn00_cn_gpu") + std::to_string(miner_algo));
+			KernelNames.push_back(std::string("cnx2") + std::to_string(miner_algo));
 		}
 
 		for(int i = 0; i < KernelNames.size(); ++i)
@@ -1187,6 +1188,55 @@ size_t XMRSetJob(GpuContext* ctx, uint8_t* input, size_t input_len, uint64_t tar
 			return(ERR_OCL_API);
 		}
 
+			// CN3 Kernel
+	// Scratchpads
+	if((ret = clSetKernelArg(Kernels[8], 0, sizeof(cl_mem), ctx->ExtraBuffers + 0)) != CL_SUCCESS)
+	{
+		printer::inst()->print_msg(L1,"Error %s when calling clSetKernelArg for kernel 2, argument 0.", err_to_str(ret));
+		return ERR_OCL_API;
+	}
+
+	// States
+	if((ret = clSetKernelArg(Kernels[8], 1, sizeof(cl_mem), ctx->ExtraBuffers + 1)) != CL_SUCCESS)
+	{
+		printer::inst()->print_msg(L1,"Error %s when calling clSetKernelArg for kernel 2, argument 1.", err_to_str(ret));
+		return ERR_OCL_API;
+	}
+		// Branch 0
+		if((ret = clSetKernelArg(Kernels[8], 2, sizeof(cl_mem), ctx->ExtraBuffers + 2)) != CL_SUCCESS)
+		{
+			printer::inst()->print_msg(L1,"Error %s when calling clSetKernelArg for kernel 2, argument 2.", err_to_str(ret));
+			return ERR_OCL_API;
+		}
+
+		// Branch 1
+		if((ret = clSetKernelArg(Kernels[8], 3, sizeof(cl_mem), ctx->ExtraBuffers + 3)) != CL_SUCCESS)
+		{
+			printer::inst()->print_msg(L1,"Error %s when calling clSetKernelArg for kernel 2, argument 3.", err_to_str(ret));
+			return ERR_OCL_API;
+		}
+
+		// Branch 2
+		if((ret = clSetKernelArg(Kernels[8], 4, sizeof(cl_mem), ctx->ExtraBuffers + 4)) != CL_SUCCESS)
+		{
+			printer::inst()->print_msg(L1,"Error %s when calling clSetKernelArg for kernel 2, argument 4.", err_to_str(ret));
+			return ERR_OCL_API;
+		}
+
+		// Branch 3
+		if((ret = clSetKernelArg(Kernels[8], 5, sizeof(cl_mem), ctx->ExtraBuffers + 5)) != CL_SUCCESS)
+		{
+			printer::inst()->print_msg(L1,"Error %s when calling clSetKernelArg for kernel 2, argument 5.", err_to_str(ret));
+			return ERR_OCL_API;
+		}
+
+		// Threads
+		if((ret = clSetKernelArg(Kernels[8], 6, sizeof(cl_uint), &numThreads)) != CL_SUCCESS)
+		{
+			printer::inst()->print_msg(L1,"Error %s when calling clSetKernelArg for kernel 2, argument 6.", err_to_str(ret));
+			return(ERR_OCL_API);
+		}
+
 		for(int i = 0; i < 4; ++i)
 		{
 			// States
@@ -1393,6 +1443,15 @@ size_t XMRRunJob(GpuContext* ctx, cl_uint* HashOutput, const xmrstak_algo& miner
 	}
 
 	if((ret = clEnqueueNDRangeKernel(ctx->CommandQueues, Kernels[2], 2, Nonce, gthreads, lthreads, 0, NULL, NULL)) != CL_SUCCESS)
+	{
+		printer::inst()->print_msg(L1,"Error %s when calling clEnqueueNDRangeKernel for kernel %d.", err_to_str(ret), 2);
+		return ERR_OCL_API;
+	}
+
+	size_t g = g_thd;
+	size_t l = 8;
+	size_t n = ctx->Nonce;
+	if((ret = clEnqueueNDRangeKernel(ctx->CommandQueues, Kernels[8], 1, &n, &g, &l, 0, NULL, NULL)) != CL_SUCCESS)
 	{
 		printer::inst()->print_msg(L1,"Error %s when calling clEnqueueNDRangeKernel for kernel %d.", err_to_str(ret), 2);
 		return ERR_OCL_API;

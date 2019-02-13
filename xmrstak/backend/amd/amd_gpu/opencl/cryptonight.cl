@@ -969,7 +969,7 @@ __kernel void JOIN(cn2,ALGO) (__global uint4 *Scratchpad, __global ulong *states
 	}
 #endif
 
-	__local ulong State_buf[8 * 25];
+
 #if(COMP_MODE==1)
 	// do not use early return here
 	if(gIdx < Threads)
@@ -980,38 +980,52 @@ __kernel void JOIN(cn2,ALGO) (__global uint4 *Scratchpad, __global ulong *states
 
 	barrier(CLK_GLOBAL_MEM_FENCE);
 
+}
+
+__attribute__((reqd_work_group_size(8, 1, 1)))
+__kernel void JOIN(cnx2,ALGO) (__global uint4 *Scratchpad, __global ulong *states,
+
+#if (ALGO == cryptonight_gpu)
+	__global uint *output, ulong Target, uint Threads)
+#else
+	__global uint *Branch0, __global uint *Branch1, __global uint *Branch2, __global uint *Branch3, uint Threads)
+#endif
+{
+
+	const uint gIdx = getIdx();
+	__local ulong State_buf[8 * 25];
+
 #if(COMP_MODE==1)
 	// do not use early return here
 	if(gIdx < Threads)
 #endif
 	{
-		if(!get_local_id(1))
-		{
-			__local ulong* State = State_buf + get_local_id(0) * 25;
+		states += 25 * gIdx;
 
-			for(int i = 0; i < 25; ++i) State[i] = states[i];
+		__local ulong* State = State_buf + get_local_id(0) * 25;
 
-			keccakf1600_2(State);
+		for(int i = 0; i < 25; ++i) State[i] = states[i];
+
+		keccakf1600_2(State);
 
 #if (ALGO == cryptonight_gpu)
-			if(State[3] <= Target)
-			{
-				ulong outIdx = atomic_inc(output + 0xFF);
-				if(outIdx < 0xFF)
-					output[outIdx] = get_global_id(0);
-			}
-#else
-			for(int i = 0; i < 25; ++i) states[i] = State[i];
-
-			uint StateSwitch = State[0] & 3;
-			__global uint *destinationBranch1 = StateSwitch == 0 ? Branch0 : Branch1;
-			__global uint *destinationBranch2 = StateSwitch == 2 ? Branch2 : Branch3;
-			__global uint *destinationBranch = StateSwitch < 2 ? destinationBranch1 : destinationBranch2;
-			destinationBranch[atomic_inc(destinationBranch + Threads)] = gIdx;
-#endif
+		if(State[3] <= Target)
+		{
+			ulong outIdx = atomic_inc(output + 0xFF);
+			if(outIdx < 0xFF)
+				output[outIdx] = get_global_id(0);
 		}
+#else
+		for(int i = 0; i < 25; ++i) states[i] = State[i];
+
+		uint StateSwitch = State[0] & 3;
+		__global uint *destinationBranch1 = StateSwitch == 0 ? Branch0 : Branch1;
+		__global uint *destinationBranch2 = StateSwitch == 2 ? Branch2 : Branch3;
+		__global uint *destinationBranch = StateSwitch < 2 ? destinationBranch1 : destinationBranch2;
+		destinationBranch[atomic_inc(destinationBranch + Threads)] = gIdx;
+#endif
+
 	}
-	mem_fence(CLK_GLOBAL_MEM_FENCE);
 }
 
 )==="
