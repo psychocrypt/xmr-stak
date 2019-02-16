@@ -442,6 +442,19 @@ size_t InitOpenCLGpu(cl_context opencl_ctx, GpuContext* ctx, const char* source_
 			strided_index = 0;
 		}
 
+		int isVega = 0;
+		if(
+			ctx->name.compare("gfx901") == 0 ||
+			ctx->name.compare("gfx904") == 0 ||
+			// APU
+			ctx->name.compare("gfx902") == 0 ||
+			// UNKNOWN
+			ctx->name.compare("gfx900") == 0 ||
+			ctx->name.compare("gfx903") == 0 ||
+			ctx->name.compare("gfx905") == 0
+		)
+			isVega = 1;
+
 		// if intensity is a multiple of worksize than comp mode is not needed
 		int needCompMode = ctx->compMode && ctx->rawIntensity % ctx->workSize != 0 ? 1 : 0;
 
@@ -460,6 +473,7 @@ size_t InitOpenCLGpu(cl_context opencl_ctx, GpuContext* ctx, const char* source_
 		 * workaround.
 		 */
 		options += " -DOPENCL_DRIVER_MAJOR=" + std::to_string(std::stoi(openCLDriverVer.data()) / 100);
+		options += " -DIS_VEGA=" + std::to_string(isVega);
 
 		if(miner_algo == cryptonight_gpu)
 			options += " -cl-fp32-correctly-rounded-divide-sqrt";

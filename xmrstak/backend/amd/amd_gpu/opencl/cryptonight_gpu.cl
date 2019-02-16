@@ -175,10 +175,16 @@ __kernel void JOIN(cn1_cn_gpu,ALGO)(__global int *lpad_in, __global int *spad, u
 	for(size_t i = 0; i < ITERATIONS; i++)
 	{
 		mem_fence(CLK_LOCAL_MEM_FENCE);
+#if(IS_VEGA == 0)
 		int tmp = ((__global int*)scratchpad_ptr(s, tidd, lpad))[tidm];
 		((__local int*)(smem->out))[tid] = tmp;
+#else
+		((__local int*)(smem->out))[tid] = ((__global int*)scratchpad_ptr(s, tidd, lpad))[tidm];
+#endif
 		mem_fence(CLK_LOCAL_MEM_FENCE);
-
+#if(IS_VEGA == 1)
+		int4 tmp = smem->out[tidd];
+#endif
 		{
 			single_comupte_wrap(
 				tidm,
@@ -194,13 +200,27 @@ __kernel void JOIN(cn1_cn_gpu,ALGO)(__global int *lpad_in, __global int *spad, u
 
 		const uint block = tidd * 16 + tidm;
 
+#if(IS_VEGA == 0)
 		int outXor = ((__local int*)smem->out)[block];
 		for(uint dd = block + 4; dd < (tidd + 1) * 16; dd += 4)
 			outXor ^= ((__local int*)smem->out)[dd];
 
 		((__global int*)scratchpad_ptr(s, tidd, lpad))[tidm] = outXor ^ tmp;
 		((__local int*)smem->out)[tid] = outXor;
-
+#else
+		int4 tmp2;
+		if(tid % 4 == 0)
+		{
+			int4 out = _mm_xor_si128(smem->out[tid], smem->out[tid + 1]);
+			int4 out2 = _mm_xor_si128(smem->out[tid + 2], smem->out[tid + 3]);
+			out = _mm_xor_si128(out, out2);
+			tmp2 = out;
+			*scratchpad_ptr(s , tidd, lpad) = _mm_xor_si128(tmp[tidd], out);
+		}
+		mem_fence(CLK_LOCAL_MEM_FENCE);
+		if(tid % 4 == 0)
+			smemOut[tid] = tmp2;
+#endif
 		float va_tmp1 = ((__local float*)smem->va)[block] + ((__local float*)smem->va)[block + 4];
 		float va_tmp2 = ((__local float*)smem->va)[block+ 8] + ((__local float*)smem->va)[block + 12];
 		((__local float*)smem->va)[tid] = va_tmp1 + va_tmp2;
