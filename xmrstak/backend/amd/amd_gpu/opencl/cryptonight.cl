@@ -750,7 +750,9 @@ __kernel void JOIN(cn1,ALGO) (__global uint4 *Scratchpad, __global ulong *states
 	{
 		uint idx0 = as_uint2(a[0]).s0 & MASK;
 
-		#pragma unroll CN_UNROLL
+#if(CN_UNROLL != 0)
+	#pragma unroll CN_UNROLL
+#endif
 	for(int i = 0; i < ITERATIONS; ++i)
 	{
 			ulong c[2];

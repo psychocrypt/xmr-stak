@@ -184,9 +184,9 @@ bool jconf::GetThreadConfig(size_t id, thd_cfg &cfg)
 
 	cfg.memChunk = (int)memChunk->GetInt64();
 
-	if(!unroll->IsUint64() || (int)unroll->GetInt64() >= 128 || (int)unroll->GetInt64() == 0)
+	if(!unroll->IsUint64() || (int)unroll->GetInt64() >= 128)
 	{
-		printer::inst()->print_msg(L0, "ERROR: unroll must be smaller than 128 and not zero");
+		printer::inst()->print_msg(L0, "ERROR: unroll must be smaller than 128");
 		return false;
 	}
 	cfg.unroll = (int)unroll->GetInt64();

@@ -159,15 +159,19 @@ __kernel void JOIN(cn1_cn_gpu,ALGO)(__global int *lpad_in, __global int *spad, u
 
 	uint idxHash = gIdx/16;
 	uint s = ((__global uint*)spad)[idxHash * 50] >> 8;
-	float4 vs = (float4)(0);
+
+	// va is only a temporary variable and therefore we reuse a little bit of the shared memory
+	if(tid == 0)
+		smem->va[0] = (float4)(0);
 
 	// tid divided
 	const uint tidd = tid / 4;
 	// tid modulo
 	const uint tidm = tid % 4;
-	const uint block = tidd * 16 + tidm;
 
+#if(CN_UNROLL != 0)
 	#pragma unroll CN_UNROLL
+#endif
 	for(size_t i = 0; i < ITERATIONS; i++)
 	{
 		mem_fence(CLK_LOCAL_MEM_FENCE);
@@ -182,11 +186,13 @@ __kernel void JOIN(cn1_cn_gpu,ALGO)(__global int *lpad_in, __global int *spad, u
 				*(smem->out + look[tid][1]),
 				*(smem->out + look[tid][2]),
 				*(smem->out + look[tid][3]),
-				ccnt[tid], vs, smem->va + tid,
+				ccnt[tid], smem->va[0], smem->va + tid,
 				smem->out + tid
 			);
 		}
 		mem_fence(CLK_LOCAL_MEM_FENCE);
+
+		const uint block = tidd * 16 + tidm;
 
 		int outXor = ((__local int*)smem->out)[block];
 		for(uint dd = block + 4; dd < (tidd + 1) * 16; dd += 4)
@@ -201,20 +207,22 @@ __kernel void JOIN(cn1_cn_gpu,ALGO)(__global int *lpad_in, __global int *spad, u
 
 		mem_fence(CLK_LOCAL_MEM_FENCE);
 
-		int out2 = ((__local int*)smem->out)[tid] ^ ((__local int*)smem->out)[tid + 4 ] ^ ((__local int*)smem->out)[tid + 8] ^ ((__local int*)smem->out)[tid + 12];
-		va_tmp1 = ((__local float*)smem->va)[block] + ((__local float*)smem->va)[block + 4];
-		va_tmp2 = ((__local float*)smem->va)[block + 8] + ((__local float*)smem->va)[block + 12];
-		va_tmp1 = va_tmp1 + va_tmp2;
-		va_tmp1 = fabs(va_tmp1);
+		if(tid < 4)
+		{
+			int out2 = ((__local int*)smem->out)[tid] ^ ((__local int*)smem->out)[tid + 4 ] ^ ((__local int*)smem->out)[tid + 8] ^ ((__local int*)smem->out)[tid + 12];
+			va_tmp1 = ((__local float*)smem->va)[block] + ((__local float*)smem->va)[block + 4];
+			va_tmp2 = ((__local float*)smem->va)[block + 8] + ((__local float*)smem->va)[block + 12];
+			va_tmp1 = va_tmp1 + va_tmp2;
+			va_tmp1 = fabs(va_tmp1);
 
-		float xx = va_tmp1 * 16777216.0f;
-		int xx_int = (int)xx;
-		((__local int*)smem->out)[tid] = out2 ^ xx_int;
-		((__local float*)smem->va)[tid] = va_tmp1 / 64.0f;
+			float xx = va_tmp1 * 16777216.0f;
+			int xx_int = (int)xx;
 
+			((__local int*)smem->out)[tid] = out2 ^ xx_int;
+			((__local float*)smem->va)[tid] = va_tmp1 / 64.0f;
+		}
 		mem_fence(CLK_LOCAL_MEM_FENCE);
 
-		vs = smem->va[0];
 		s = smem->out[0].x ^ smem->out[0].y ^ smem->out[0].z ^ smem->out[0].w;
 	}
 }
