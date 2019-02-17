@@ -202,7 +202,7 @@ static int v4_random_math_init(struct V4_Instruction* code, const uint64_t heigh
 	// Available ALUs for each instruction
 	const int op_ALUs[V4_INSTRUCTION_COUNT] = { ALU_COUNT_MUL, ALU_COUNT, ALU_COUNT, ALU_COUNT, ALU_COUNT, ALU_COUNT };
 
-	int8_t data[32];
+	uint8_t data[32];
 	memset(data, 0, sizeof(data));
 	uint64_t tmp = SWAP64LE(height);
 	memcpy(data, &tmp, sizeof(uint64_t));

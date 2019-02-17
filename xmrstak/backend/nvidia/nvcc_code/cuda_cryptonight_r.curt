@@ -1,5 +1,21 @@
 R"===(
 
+/*
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ */
+
 #define cryptonight_r_wow 15
 #define cryptonight_r4 16
 #define cryptonight_r4_64 17
@@ -427,7 +443,7 @@ __global__ void CryptonightR_phase2(
         return;
     }
 
-    uint8_t *l0              = (uint8_t*)&d_long_state[((uint64_t)thread) * MEMORY)];
+    uint8_t *l0              = (uint8_t*)&d_long_state[((uint64_t)thread) * MEMORY];
     uint64_t ax0             = ((uint64_t*)(d_ctx_a + thread * 4))[sub];
     uint32_t idx0            = shuffle<2>(sPtr, sub, static_cast<uint32_t>(ax0), 0);
     uint64_t bx0             = ((uint64_t*)(d_ctx_b + thread * 16))[sub];

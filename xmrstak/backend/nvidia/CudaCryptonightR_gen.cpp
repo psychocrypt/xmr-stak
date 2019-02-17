@@ -1,3 +1,19 @@
+/*
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ */
+
 #include <string>
 #include <sstream>
 #include <mutex>
@@ -131,11 +147,6 @@ static void background_exec(T&& func)
     }
 }
 
-static bool is_64bit(xmrig::Variant algo)
-{
-    return algo == xmrig::VARIANT_4_64;
-}
-
 static void CryptonightR_build_program(
     std::vector<char>& ptx,
     std::string& lowered_name,
@@ -154,7 +165,7 @@ static void CryptonightR_build_program(
             const CacheEntry& entry = CryptonightR_cache[i];
             if ((entry.algo == algo) && (entry.height + 2 < height))
             {
-                //LOG_INFO("CryptonightR: program for height %llu released (old program)", entry.height);
+                printer::inst()->print_msg(L0, "CryptonightR: program for height %llu released (old program)", entry.height);
                 CryptonightR_cache[i] = std::move(CryptonightR_cache.back());
                 CryptonightR_cache.pop_back();
             }
@@ -187,13 +198,13 @@ static void CryptonightR_build_program(
     nvrtcProgram prog;
     nvrtcResult result = nvrtcCreateProgram(&prog, source.c_str(), "CryptonightR.cu", 0, NULL, NULL);
     if (result != NVRTC_SUCCESS) {
-        LOG_ERR("nvrtcCreateProgram failed: %s", nvrtcGetErrorString(result));
+        printer::inst()->print_msg(L0, "nvrtcCreateProgram failed: %s", nvrtcGetErrorString(result));
         return;
     }
 
     result = nvrtcAddNameExpression(prog, "CryptonightR_phase2");
     if (result != NVRTC_SUCCESS) {
-        LOG_ERR("nvrtcAddNameExpression failed: %s", nvrtcGetErrorString(result));
+        printer::inst()->print_msg(L0, "nvrtcAddNameExpression failed: %s", nvrtcGetErrorString(result));
         nvrtcDestroyProgram(&prog);
         return;
     }
@@ -202,18 +213,19 @@ static void CryptonightR_build_program(
     sprintf(opt0, "--gpu-architecture=compute_%d%d", arch_major, arch_minor);
 
     char opt1[64];
-    sprintf(opt1, "-DVARIANT=%d", static_cast<int>(algo));
+    sprintf(opt1, "-DALGO=%d", static_cast<int>(algo.Id()));
 
-    const char* opts[3] = { opt0, opt1, is_64bit(algo) ? "-DRANDOM_MATH_64_BIT" : nullptr };
-    result = nvrtcCompileProgram(prog, is_64bit(algo) ? 3 : 2, opts);
+	const char* opts[3] = { opt0, opt1 };
+
+    result = nvrtcCompileProgram(prog, 2, opts);
     if (result != NVRTC_SUCCESS) {
-        LOG_ERR("nvrtcCompileProgram failed: %s", nvrtcGetErrorString(result));
+        printer::inst()->print_msg(L0, "nvrtcCompileProgram failed: %s", nvrtcGetErrorString(result));
 
         size_t logSize;
         if (nvrtcGetProgramLogSize(prog, &logSize) == NVRTC_SUCCESS) {
             char *log = new char[logSize];
             if (nvrtcGetProgramLog(prog, log) == NVRTC_SUCCESS) {
-                LOG_INFO("Program compile log: %s", log);
+                printer::inst()->print_msg(L0, "Program compile log: %s", log);
             }
             delete[]log;
         }
@@ -225,7 +237,7 @@ static void CryptonightR_build_program(
     const char* name;
     result = nvrtcGetLoweredName(prog, "CryptonightR_phase2", &name);
     if (result != NVRTC_SUCCESS) {
-        LOG_ERR("nvrtcGetLoweredName failed: %s", nvrtcGetErrorString(result));
+        printer::inst()->print_msg(L0, "nvrtcGetLoweredName failed: %s", nvrtcGetErrorString(result));
         nvrtcDestroyProgram(&prog);
         return;
     }
@@ -233,7 +245,7 @@ static void CryptonightR_build_program(
     size_t ptxSize;
     result = nvrtcGetPTXSize(prog, &ptxSize);
     if (result != NVRTC_SUCCESS) {
-        LOG_ERR("nvrtcGetPTXSize failed: %s", nvrtcGetErrorString(result));
+        printer::inst()->print_msg(L0, "nvrtcGetPTXSize failed: %s", nvrtcGetErrorString(result));
         nvrtcDestroyProgram(&prog);
         return;
     }
@@ -241,7 +253,7 @@ static void CryptonightR_build_program(
     ptx.resize(ptxSize);
     result = nvrtcGetPTX(prog, ptx.data());
     if (result != NVRTC_SUCCESS) {
-        LOG_ERR("nvrtcGetPTX failed: %s", nvrtcGetErrorString(result));
+        printer::inst()->print_msg(L0, "nvrtcGetPTX failed: %s", nvrtcGetErrorString(result));
         nvrtcDestroyProgram(&prog);
         return;
     }
@@ -250,7 +262,7 @@ static void CryptonightR_build_program(
 
     nvrtcDestroyProgram(&prog);
 
-    //LOG_INFO("CryptonightR: program for height %llu compiled", height);
+    printer::inst()->print_msg(L0, "CryptonightR: program for height %llu compiled", height);
 
     {
         std::lock_guard<std::mutex> g(CryptonightR_cache_mutex);
@@ -274,13 +286,13 @@ void CryptonightR_get_program(std::vector<char>& ptx, std::string& lowered_name,
     const char* offset = strstr(source_code_template, include_name);
     if (!offset)
     {
-        LOG_ERR("CryptonightR_get_program: XMRSTAK_INCLUDE_RANDOM_MATH not found in CryptonightR.cu");
+        printer::inst()->print_msg(L0, "CryptonightR_get_program: XMRSTAK_INCLUDE_RANDOM_MATH not found in cuda_cryptonight_r.curt");
         return;
     }
 
     V4_Instruction code[256];
     int code_size;
-    switch (algo.id())
+    switch (algo.Id())
     {
     case cryptonight_r_wow:
         code_size = v4_random_math_init<cryptonight_r_wow>(code, height);
@@ -292,7 +304,7 @@ void CryptonightR_get_program(std::vector<char>& ptx, std::string& lowered_name,
         code_size = v4_random_math_init<cryptonight_r_64>(code, height);
         break;
     default:
-        LOG_ERR("CryptonightR_get_program: invalid algo %d", algo);
+        printer::inst()->print_msg(L0, "CryptonightR_get_program: invalid algo %d", algo);
         return;
     }
 
@@ -308,7 +320,7 @@ void CryptonightR_get_program(std::vector<char>& ptx, std::string& lowered_name,
         {
             if ((entry.algo == algo) && (entry.height == height) && (entry.arch_major == arch_major) && (entry.arch_minor == arch_minor))
             {
-                //LOG_INFO("CryptonightR: program for height %llu found in cache", height);
+                printer::inst()->print_msg(L0, "CryptonightR: program for height %llu found in cache", height);
                 ptx = entry.ptx;
                 lowered_name = entry.lowered_name;
                 return;
