@@ -173,6 +173,8 @@ std::vector<iBackend*>* minethd::thread_starter(uint32_t threadOffset, miner_wor
 	size_t i, n = jconf::inst()->GetGPUThreadCount();
 	pvThreads->reserve(n);
 
+	cuInit(0);
+
 	jconf::thd_cfg cfg;
 	for (i = 0; i < n; i++)
 	{

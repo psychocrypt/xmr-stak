@@ -6,6 +6,8 @@
 #include "xmrstak/jconf.hpp"
 #include "xmrstak/backend/cryptonight.hpp"
 
+#include <cuda.h>
+
 typedef struct {
 	int device_id;
 	const char *device_name;
@@ -33,6 +35,12 @@ typedef struct {
 	std::string name;
 	size_t free_device_memory;
 	size_t total_device_memory;
+
+	CUdevice cuDevice;
+	CUcontext cuContext;
+	CUmodule module = nullptr;
+	CUfunction kernel = nullptr;
+	uint64_t kernel_height = 0;
 } nvid_ctx;
 
 extern "C" {

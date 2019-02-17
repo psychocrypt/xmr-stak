@@ -129,14 +129,23 @@ __global__ void cryptonight_extra_gpu_prepare( int threads, uint32_t * __restric
 	memcpy( d_ctx_a + thread * 4, ctx_a, 4 * 4 );
 	if(ALGO == cryptonight_monero_v8)
 	{
-		memcpy( d_ctx_b + thread * 12, ctx_b, 4 * 4 );
+		memcpy( d_ctx_b + thread * 16, ctx_b, 4 * 4 );
 		// bx1
 		XOR_BLOCKS_DST( ctx_state + 16, ctx_state + 20, ctx_b );
-		memcpy( d_ctx_b + thread * 12 + 4, ctx_b, 4 * 4 );
+		memcpy( d_ctx_b + thread * 16 + 4, ctx_b, 4 * 4 );
 		// division_result
-		memcpy( d_ctx_b + thread * 12 + 2 * 4, ctx_state + 24, 4 * 2 );
+		memcpy( d_ctx_b + thread * 16 + 2 * 4, ctx_state + 24, 4 * 2 );
 		// sqrt_result
-		memcpy( d_ctx_b + thread * 12 + 2 * 4 + 2, ctx_state + 26, 4 * 2 );
+		memcpy( d_ctx_b + thread * 16 + 2 * 4 + 2, ctx_state + 26, 4 * 2 );
+	}
+	else if(ALGO == cryptonight_r_wow || ALGO == cryptonight_r || ALGO == cryptonight_r_64)
+	{
+		memcpy(d_ctx_b + thread * 16, ctx_b, 4 * 4);
+		// bx1
+		XOR_BLOCKS_DST(ctx_state + 16, ctx_state + 20, ctx_b);
+		memcpy(d_ctx_b + thread * 16 + 4, ctx_b, 4 * 4);
+		// r0, r1, r2, r3
+		memcpy(d_ctx_b + thread * 16 + 2 * 4, ctx_state + 24, 4 * 8);
 	}
 	else
 		memcpy( d_ctx_b + thread * 4, ctx_b, 4 * 4 );
@@ -258,6 +267,9 @@ extern "C" void cryptonight_extra_cpu_set_data( nvid_ctx* ctx, const void *data,
 
 extern "C" int cryptonight_extra_cpu_init(nvid_ctx* ctx)
 {
+	CU_CHECK(ctx->device_id, cuDeviceGet(&ctx->cuDevice, ctx->device_id));
+    CU_CHECK(ctx->device_id, cuCtxCreate(&ctx->cuContext, 0, ctx->cuDevice));
+
 	cudaError_t err;
 	err = cudaSetDevice(ctx->device_id);
 	if(err != cudaSuccess)
@@ -316,8 +328,17 @@ extern "C" int cryptonight_extra_cpu_init(nvid_ctx* ctx)
 	}
 	else if(std::find(neededAlgorithms.begin(), neededAlgorithms.end(), cryptonight_monero_v8) != neededAlgorithms.end())
 	{
-		// bx1 (16byte), division_result (8byte) and sqrt_result (8byte)
-		ctx_b_size = 3 * 4 * sizeof(uint32_t) * wsize;
+		// bx0 (16byte), bx1 (16byte), division_result (8byte) and sqrt_result (8byte), padding (16byte)
+		ctx_b_size = 4 * 4 * sizeof(uint32_t) * wsize;
+	}
+	else if(
+		std::find(neededAlgorithms.begin(), neededAlgorithms.end(), cryptonight_r) != neededAlgorithms.end() ||
+		std::find(neededAlgorithms.begin(), neededAlgorithms.end(), cryptonight_r_64) != neededAlgorithms.end() ||
+		std::find(neededAlgorithms.begin(), neededAlgorithms.end(), cryptonight_r_wow) != neededAlgorithms.end()
+	)
+	{
+		// bx0 (16byte), bx1 (16byte), and [r0, r1, r2, r3] (a 8byte)
+		ctx_b_size = 4 * 4 * sizeof(uint32_t) * wsize;
 	}
 	else
 		ctx->d_ctx_state2 = ctx->d_ctx_state;
@@ -374,6 +395,21 @@ extern "C" void cryptonight_extra_cpu_prepare(nvid_ctx* ctx, uint32_t startNonce
 	else if(miner_algo == cryptonight_gpu)
 	{
 		CUDA_CHECK_KERNEL(ctx->device_id, cryptonight_extra_gpu_prepare<cryptonight_gpu><<<grid, block >>>( wsize, ctx->d_input, ctx->inputlen, startNonce,
+			ctx->d_ctx_state,ctx->d_ctx_state2, ctx->d_ctx_a, ctx->d_ctx_b, ctx->d_ctx_key1, ctx->d_ctx_key2 ));
+	}
+	else if(miner_algo == cryptonight_r)
+	{
+		CUDA_CHECK_KERNEL(ctx->device_id, cryptonight_extra_gpu_prepare<cryptonight_r><<<grid, block >>>( wsize, ctx->d_input, ctx->inputlen, startNonce,
+			ctx->d_ctx_state,ctx->d_ctx_state2, ctx->d_ctx_a, ctx->d_ctx_b, ctx->d_ctx_key1, ctx->d_ctx_key2 ));
+	}
+	else if(miner_algo == cryptonight_r_64)
+	{
+		CUDA_CHECK_KERNEL(ctx->device_id, cryptonight_extra_gpu_prepare<cryptonight_r_64><<<grid, block >>>( wsize, ctx->d_input, ctx->inputlen, startNonce,
+			ctx->d_ctx_state,ctx->d_ctx_state2, ctx->d_ctx_a, ctx->d_ctx_b, ctx->d_ctx_key1, ctx->d_ctx_key2 ));
+	}
+	else if(miner_algo == cryptonight_r_wow)
+	{
+		CUDA_CHECK_KERNEL(ctx->device_id, cryptonight_extra_gpu_prepare<cryptonight_r_wow><<<grid, block >>>( wsize, ctx->d_input, ctx->inputlen, startNonce,
 			ctx->d_ctx_state,ctx->d_ctx_state2, ctx->d_ctx_a, ctx->d_ctx_b, ctx->d_ctx_key1, ctx->d_ctx_key2 ));
 	}
 	else

@@ -547,6 +547,11 @@ if(CUDA_FOUND)
             ${CUDASRCFILES}
         )
     endif()
+    # required for monero's cryptonight_r
+    find_library(CUDA_LIB libcuda cuda HINTS "${CUDA_TOOLKIT_ROOT_DIR}/lib64" "${LIBCUDA_LIBRARY_DIR}" "${CUDA_TOOLKIT_ROOT_DIR}/lib/x64" /usr/lib64 /usr/local/cuda/lib64)
+    find_library(CUDA_NVRTC_LIB libnvrtc nvrtc HINTS "${CUDA_TOOLKIT_ROOT_DIR}/lib64" "${LIBNVRTC_LIBRARY_DIR}" "${CUDA_TOOLKIT_ROOT_DIR}/lib/x64" /usr/lib64 /usr/local/cuda/lib64)
+
+    set(CUDA_LIBRARIES ${CUDA_LIB} ${CUDA_NVRTC_LIB} ${CUDA_LIBRARIES})
     target_link_libraries(xmrstak_cuda_backend ${CUDA_LIBRARIES})
     target_link_libraries(xmrstak_cuda_backend xmr-stak-backend xmr-stak-asm)
 endif()
