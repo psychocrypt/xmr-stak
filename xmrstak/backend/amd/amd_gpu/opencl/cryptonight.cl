@@ -1361,10 +1361,6 @@ __kernel void Groestl(__global ulong *states, __global uint *BranchBuf, __global
 		states += 25 * BranchBuf[idx];
 
 		ulong State[8] = { 0UL, 0UL, 0UL, 0UL, 0UL, 0UL, 0UL, 0x0001000000000000UL };
-#if defined(__clang__) && !defined(__NV_CL_C_VERSION)
-		// on ROCM we need volatile for AMD RX5xx cards to avoid invalid shares
-		volatile
-#endif
 		ulong H[8], M[8];
 
 		for (uint i = 0; i < 3; ++i) {
