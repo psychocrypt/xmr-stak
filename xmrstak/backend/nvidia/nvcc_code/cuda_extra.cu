@@ -301,54 +301,71 @@ extern "C" int cryptonight_extra_cpu_init(nvid_ctx* ctx)
 	}
 
 	size_t wsize = ctx->device_blocks * ctx->device_threads;
-	CUDA_CHECK(ctx->device_id, cudaMalloc(&ctx->d_ctx_state, 50 * sizeof(uint32_t) * wsize));
+	for(int i = 0; i < 2; i++)
+	{
+		CUDA_CHECK(ctx->device_id, cudaMalloc(&ctx->d_ctx_statev[i], 50 * sizeof(uint32_t) * wsize));
+	}
 	// get the cudaRT context
 	CU_CHECK(ctx->device_id, cuCtxGetCurrent(&ctx->cuContext));
 
 	size_t ctx_b_size = 4 * sizeof(uint32_t) * wsize;
-	if(
-		std::find(neededAlgorithms.begin(), neededAlgorithms.end(), cryptonight_heavy) != neededAlgorithms.end() ||
-		std::find(neededAlgorithms.begin(), neededAlgorithms.end(), cryptonight_haven) != neededAlgorithms.end() ||
-		std::find(neededAlgorithms.begin(), neededAlgorithms.end(), cryptonight_bittube2) != neededAlgorithms.end() ||
-		std::find(neededAlgorithms.begin(), neededAlgorithms.end(), cryptonight_superfast) != neededAlgorithms.end())
-	{
-		// extent ctx_b to hold the state of idx0
-		ctx_b_size += sizeof(uint32_t) * wsize;
-		// create a double buffer for the state to exchange the mixed state to phase1
-		CUDA_CHECK(ctx->device_id, cudaMalloc(&ctx->d_ctx_state2, 50 * sizeof(uint32_t) * wsize));
-	}
-	else if(std::find(neededAlgorithms.begin(), neededAlgorithms.end(), cryptonight_conceal) != neededAlgorithms.end())
-	{
-		ctx_b_size += sizeof(uint32_t) * 4 * wsize;
-	}
-	else if((std::find(neededAlgorithms.begin(), neededAlgorithms.end(), cryptonight_monero_v8) != neededAlgorithms.end()) || (std::find(neededAlgorithms.begin(), neededAlgorithms.end(), cryptonight_v8_reversewaltz) != neededAlgorithms.end()))
-	{
-		// bx0 (16byte), bx1 (16byte), division_result (8byte) and sqrt_result (8byte), padding (16byte)
-		ctx_b_size = 4 * 4 * sizeof(uint32_t) * wsize;
-	}
-	else if(
-		std::find(neededAlgorithms.begin(), neededAlgorithms.end(), cryptonight_r) != neededAlgorithms.end() ||
-		std::find(neededAlgorithms.begin(), neededAlgorithms.end(), cryptonight_r_wow) != neededAlgorithms.end())
-	{
-		// bx0 (16byte), bx1 (16byte), and [r0, r1, r2, r3] (a 8byte)
-		ctx_b_size = 4 * 4 * sizeof(uint32_t) * wsize;
-	}
-	else
-		ctx->d_ctx_state2 = ctx->d_ctx_state;
 
-	CUDA_CHECK(ctx->device_id, cudaMalloc(&ctx->d_ctx_key1, 40 * sizeof(uint32_t) * wsize));
-	CUDA_CHECK(ctx->device_id, cudaMalloc(&ctx->d_ctx_key2, 40 * sizeof(uint32_t) * wsize));
-	CUDA_CHECK(ctx->device_id, cudaMalloc(&ctx->d_ctx_text, 32 * sizeof(uint32_t) * wsize));
-	CUDA_CHECK(ctx->device_id, cudaMalloc(&ctx->d_ctx_a, 4 * sizeof(uint32_t) * wsize));
-	CUDA_CHECK(ctx->device_id, cudaMalloc(&ctx->d_ctx_b, ctx_b_size));
-	// POW block format http://monero.wikia.com/wiki/PoW_Block_Header_Format
-	CUDA_CHECK(ctx->device_id, cudaMalloc(&ctx->d_input, 32 * sizeof(uint32_t)));
-	CUDA_CHECK(ctx->device_id, cudaMalloc(&ctx->d_result_count, sizeof(uint32_t)));
-	CUDA_CHECK(ctx->device_id, cudaMalloc(&ctx->d_result_nonce, 10 * sizeof(uint32_t)));
-	CUDA_CHECK_MSG(
-		ctx->device_id,
-		"\n**suggestion: Try to reduce the value of the attribute 'threads' in the NVIDIA config file.**",
-		cudaMalloc(&ctx->d_long_state, hashMemSize * wsize));
+	for(int i = 0; i < 2; i++)
+	{
+		if(
+			std::find(neededAlgorithms.begin(), neededAlgorithms.end(), cryptonight_heavy) != neededAlgorithms.end() ||
+			std::find(neededAlgorithms.begin(), neededAlgorithms.end(), cryptonight_haven) != neededAlgorithms.end() ||
+			std::find(neededAlgorithms.begin(), neededAlgorithms.end(), cryptonight_bittube2) != neededAlgorithms.end() ||
+			std::find(neededAlgorithms.begin(), neededAlgorithms.end(), cryptonight_superfast) != neededAlgorithms.end())
+		{
+			// extent ctx_b to hold the state of idx0
+			ctx_b_size += sizeof(uint32_t) * wsize;
+			// create a double buffer for the state to exchange the mixed state to phase1
+			CUDA_CHECK(ctx->device_id, cudaMalloc(&ctx->d_ctx_state2v[i], 50 * sizeof(uint32_t) * wsize));
+		}
+		else if(std::find(neededAlgorithms.begin(), neededAlgorithms.end(), cryptonight_conceal) != neededAlgorithms.end())
+		{
+			ctx_b_size += sizeof(uint32_t) * 4 * wsize;
+		}
+		else if((std::find(neededAlgorithms.begin(), neededAlgorithms.end(), cryptonight_monero_v8) != neededAlgorithms.end()) || (std::find(neededAlgorithms.begin(), neededAlgorithms.end(), cryptonight_v8_reversewaltz) != neededAlgorithms.end()))
+		{
+			// bx0 (16byte), bx1 (16byte), division_result (8byte) and sqrt_result (8byte), padding (16byte)
+			ctx_b_size = 4 * 4 * sizeof(uint32_t) * wsize;
+		}
+		else if(
+			std::find(neededAlgorithms.begin(), neededAlgorithms.end(), cryptonight_r) != neededAlgorithms.end() ||
+			std::find(neededAlgorithms.begin(), neededAlgorithms.end(), cryptonight_r_wow) != neededAlgorithms.end())
+		{
+			// bx0 (16byte), bx1 (16byte), and [r0, r1, r2, r3] (a 8byte)
+			ctx_b_size = 4 * 4 * sizeof(uint32_t) * wsize;
+		}
+		else
+			ctx->d_ctx_state2v[i] = ctx->d_ctx_statev[i];
+	}
+	for(int i = 0; i < 2; i++)
+	{
+		CUDA_CHECK(ctx->device_id, cudaMalloc(&ctx->d_ctx_key1v[i], 40 * sizeof(uint32_t) * wsize));
+		CUDA_CHECK(ctx->device_id, cudaMalloc(&ctx->d_ctx_key2v[i], 40 * sizeof(uint32_t) * wsize));
+		CUDA_CHECK(ctx->device_id, cudaMalloc(&ctx->d_ctx_textv[i], 32 * sizeof(uint32_t) * wsize));
+		CUDA_CHECK(ctx->device_id, cudaMalloc(&ctx->d_ctx_av[i], 4 * sizeof(uint32_t) * wsize));
+		CUDA_CHECK(ctx->device_id, cudaMalloc(&ctx->d_ctx_bv[i], ctx_b_size));
+		// POW block format http://monero.wikia.com/wiki/PoW_Block_Header_Format
+		CUDA_CHECK(ctx->device_id, cudaMalloc(&ctx->d_input, 32 * sizeof(uint32_t)));
+		CUDA_CHECK(ctx->device_id, cudaMalloc(&ctx->d_result_countv[i], sizeof(uint32_t)));
+		CUDA_CHECK(ctx->device_id, cudaMalloc(&ctx->d_result_noncev[i], 10 * sizeof(uint32_t)));
+
+		CUDA_CHECK(ctx->device_id, cudaMallocHost(&ctx->foundNonce[i], 10 * sizeof(uint32_t)));
+		CUDA_CHECK(ctx->device_id, cudaMallocHost(&ctx->foundCount[i], sizeof(uint32_t)));
+		CUDA_CHECK(ctx->device_id, cudaStreamCreate(&ctx->stream[i]));
+	}
+	for(int i = 0; i < 2; i++)
+	{
+		CUDA_CHECK_MSG(
+			ctx->device_id,
+			"\n**suggestion: Try to reduce the value of the attribute 'threads' in the NVIDIA config file.**",
+			cudaMalloc(&ctx->d_long_statev[i], hashMemSize * wsize));
+	}
+	ctx->cIdx = 0;
 	return 1;
 }
 
@@ -362,56 +379,56 @@ extern "C" void cryptonight_extra_cpu_prepare(nvid_ctx* ctx, uint32_t startNonce
 
 	if(miner_algo == cryptonight_heavy)
 	{
-		CUDA_CHECK_KERNEL(ctx->device_id, cryptonight_extra_gpu_prepare<cryptonight_heavy><<<grid, block>>>(wsize, ctx->d_input, ctx->inputlen, startNonce,
-											  ctx->d_ctx_state, ctx->d_ctx_state2, ctx->d_ctx_a, ctx->d_ctx_b, ctx->d_ctx_key1, ctx->d_ctx_key2));
+		CUDA_CHECK_KERNEL(ctx->device_id, cryptonight_extra_gpu_prepare<cryptonight_heavy><<<grid, block, 0, ctx->stream[ctx->cIdx]>>>(wsize, ctx->d_input, ctx->inputlen, startNonce,
+											  ctx->d_ctx_statev[ctx->cIdx], ctx->d_ctx_state2v[ctx->cIdx], ctx->d_ctx_av[ctx->cIdx], ctx->d_ctx_bv[ctx->cIdx], ctx->d_ctx_key1v[ctx->cIdx], ctx->d_ctx_key2v[ctx->cIdx]));
 	}
 	else if(miner_algo == cryptonight_haven)
 	{
-		CUDA_CHECK_KERNEL(ctx->device_id, cryptonight_extra_gpu_prepare<cryptonight_haven><<<grid, block>>>(wsize, ctx->d_input, ctx->inputlen, startNonce,
-											  ctx->d_ctx_state, ctx->d_ctx_state2, ctx->d_ctx_a, ctx->d_ctx_b, ctx->d_ctx_key1, ctx->d_ctx_key2));
+		CUDA_CHECK_KERNEL(ctx->device_id, cryptonight_extra_gpu_prepare<cryptonight_haven><<<grid, block, 0, ctx->stream[ctx->cIdx]>>>(wsize, ctx->d_input, ctx->inputlen, startNonce,
+											  ctx->d_ctx_statev[ctx->cIdx], ctx->d_ctx_state2v[ctx->cIdx], ctx->d_ctx_av[ctx->cIdx], ctx->d_ctx_bv[ctx->cIdx], ctx->d_ctx_key1v[ctx->cIdx], ctx->d_ctx_key2v[ctx->cIdx]));
 	}
 	else if(miner_algo == cryptonight_superfast)
 	{
-		CUDA_CHECK_KERNEL(ctx->device_id, cryptonight_extra_gpu_prepare<cryptonight_superfast><<<grid, block>>>(wsize, ctx->d_input, ctx->inputlen, startNonce,
-											  ctx->d_ctx_state, ctx->d_ctx_state2, ctx->d_ctx_a, ctx->d_ctx_b, ctx->d_ctx_key1, ctx->d_ctx_key2));
+		CUDA_CHECK_KERNEL(ctx->device_id, cryptonight_extra_gpu_prepare<cryptonight_superfast><<<grid, block, 0, ctx->stream[ctx->cIdx]>>>(wsize, ctx->d_input, ctx->inputlen, startNonce,
+											  ctx->d_ctx_statev[ctx->cIdx], ctx->d_ctx_state2v[ctx->cIdx], ctx->d_ctx_av[ctx->cIdx], ctx->d_ctx_bv[ctx->cIdx], ctx->d_ctx_key1v[ctx->cIdx], ctx->d_ctx_key2v[ctx->cIdx]));
 	}
 	else if(miner_algo == cryptonight_bittube2)
 	{
-		CUDA_CHECK_KERNEL(ctx->device_id, cryptonight_extra_gpu_prepare<cryptonight_bittube2><<<grid, block>>>(wsize, ctx->d_input, ctx->inputlen, startNonce,
-											  ctx->d_ctx_state, ctx->d_ctx_state2, ctx->d_ctx_a, ctx->d_ctx_b, ctx->d_ctx_key1, ctx->d_ctx_key2));
+		CUDA_CHECK_KERNEL(ctx->device_id, cryptonight_extra_gpu_prepare<cryptonight_bittube2><<<grid, block, 0, ctx->stream[ctx->cIdx]>>>(wsize, ctx->d_input, ctx->inputlen, startNonce,
+											  ctx->d_ctx_statev[ctx->cIdx], ctx->d_ctx_state2v[ctx->cIdx], ctx->d_ctx_av[ctx->cIdx], ctx->d_ctx_bv[ctx->cIdx], ctx->d_ctx_key1v[ctx->cIdx], ctx->d_ctx_key2v[ctx->cIdx]));
 	}
 	else if(miner_algo == cryptonight_monero_v8)
 	{
-		CUDA_CHECK_KERNEL(ctx->device_id, cryptonight_extra_gpu_prepare<cryptonight_monero_v8><<<grid, block>>>(wsize, ctx->d_input, ctx->inputlen, startNonce,
-											  ctx->d_ctx_state, ctx->d_ctx_state2, ctx->d_ctx_a, ctx->d_ctx_b, ctx->d_ctx_key1, ctx->d_ctx_key2));
+		CUDA_CHECK_KERNEL(ctx->device_id, cryptonight_extra_gpu_prepare<cryptonight_monero_v8><<<grid, block, 0, ctx->stream[ctx->cIdx]>>>(wsize, ctx->d_input, ctx->inputlen, startNonce,
+											  ctx->d_ctx_statev[ctx->cIdx], ctx->d_ctx_state2v[ctx->cIdx], ctx->d_ctx_av[ctx->cIdx], ctx->d_ctx_bv[ctx->cIdx], ctx->d_ctx_key1v[ctx->cIdx], ctx->d_ctx_key2v[ctx->cIdx]));
 	}
 	else if(miner_algo == cryptonight_gpu)
 	{
-		CUDA_CHECK_KERNEL(ctx->device_id, cryptonight_extra_gpu_prepare<cryptonight_gpu><<<grid, block>>>(wsize, ctx->d_input, ctx->inputlen, startNonce,
-											  ctx->d_ctx_state, ctx->d_ctx_state2, ctx->d_ctx_a, ctx->d_ctx_b, ctx->d_ctx_key1, ctx->d_ctx_key2));
+		CUDA_CHECK_KERNEL(ctx->device_id, cryptonight_extra_gpu_prepare<cryptonight_gpu><<<grid, block, 0, ctx->stream[ctx->cIdx]>>>(wsize, ctx->d_input, ctx->inputlen, startNonce,
+											  ctx->d_ctx_statev[ctx->cIdx], ctx->d_ctx_state2v[ctx->cIdx], ctx->d_ctx_av[ctx->cIdx], ctx->d_ctx_bv[ctx->cIdx], ctx->d_ctx_key1v[ctx->cIdx], ctx->d_ctx_key2v[ctx->cIdx]));
 	}
 	else if(miner_algo == cryptonight_r)
 	{
-		CUDA_CHECK_KERNEL(ctx->device_id, cryptonight_extra_gpu_prepare<cryptonight_r><<<grid, block>>>(wsize, ctx->d_input, ctx->inputlen, startNonce,
-											  ctx->d_ctx_state, ctx->d_ctx_state2, ctx->d_ctx_a, ctx->d_ctx_b, ctx->d_ctx_key1, ctx->d_ctx_key2));
+		CUDA_CHECK_KERNEL(ctx->device_id, cryptonight_extra_gpu_prepare<cryptonight_r><<<grid, block, 0, ctx->stream[ctx->cIdx]>>>(wsize, ctx->d_input, ctx->inputlen, startNonce,
+											  ctx->d_ctx_statev[ctx->cIdx], ctx->d_ctx_state2v[ctx->cIdx], ctx->d_ctx_av[ctx->cIdx], ctx->d_ctx_bv[ctx->cIdx], ctx->d_ctx_key1v[ctx->cIdx], ctx->d_ctx_key2v[ctx->cIdx]));
 	}
 	else if(miner_algo == cryptonight_r_wow)
 	{
-		CUDA_CHECK_KERNEL(ctx->device_id, cryptonight_extra_gpu_prepare<cryptonight_r_wow><<<grid, block>>>(wsize, ctx->d_input, ctx->inputlen, startNonce,
-											  ctx->d_ctx_state, ctx->d_ctx_state2, ctx->d_ctx_a, ctx->d_ctx_b, ctx->d_ctx_key1, ctx->d_ctx_key2));
+		CUDA_CHECK_KERNEL(ctx->device_id, cryptonight_extra_gpu_prepare<cryptonight_r_wow><<<grid, block, 0, ctx->stream[ctx->cIdx]>>>(wsize, ctx->d_input, ctx->inputlen, startNonce,
+											  ctx->d_ctx_statev[ctx->cIdx], ctx->d_ctx_state2v[ctx->cIdx], ctx->d_ctx_av[ctx->cIdx], ctx->d_ctx_bv[ctx->cIdx], ctx->d_ctx_key1v[ctx->cIdx], ctx->d_ctx_key2v[ctx->cIdx]));
 	}
 	else if(miner_algo == cryptonight_v8_reversewaltz)
 	{
-		CUDA_CHECK_KERNEL(ctx->device_id, cryptonight_extra_gpu_prepare<cryptonight_v8_reversewaltz><<<grid, block>>>(wsize, ctx->d_input, ctx->inputlen, startNonce,
-											  ctx->d_ctx_state, ctx->d_ctx_state2, ctx->d_ctx_a, ctx->d_ctx_b, ctx->d_ctx_key1, ctx->d_ctx_key2));
+		CUDA_CHECK_KERNEL(ctx->device_id, cryptonight_extra_gpu_prepare<cryptonight_v8_reversewaltz><<<grid, block, 0, ctx->stream[ctx->cIdx]>>>(wsize, ctx->d_input, ctx->inputlen, startNonce,
+											  ctx->d_ctx_statev[ctx->cIdx], ctx->d_ctx_state2v[ctx->cIdx], ctx->d_ctx_av[ctx->cIdx], ctx->d_ctx_bv[ctx->cIdx], ctx->d_ctx_key1v[ctx->cIdx], ctx->d_ctx_key2v[ctx->cIdx]));
 	}
 	else
 	{
 		/* pass two times d_ctx_state because the second state is used later in phase1,
 		 * the first is used than in phase3
 		 */
-		CUDA_CHECK_KERNEL(ctx->device_id, cryptonight_extra_gpu_prepare<invalid_algo><<<grid, block>>>(wsize, ctx->d_input, ctx->inputlen, startNonce,
-											  ctx->d_ctx_state, ctx->d_ctx_state, ctx->d_ctx_a, ctx->d_ctx_b, ctx->d_ctx_key1, ctx->d_ctx_key2));
+		CUDA_CHECK_KERNEL(ctx->device_id, cryptonight_extra_gpu_prepare<invalid_algo><<<grid, block, 0, ctx->stream[ctx->cIdx]>>>(wsize, ctx->d_input, ctx->inputlen, startNonce,
+											  ctx->d_ctx_statev[ctx->cIdx], ctx->d_ctx_statev[ctx->cIdx], ctx->d_ctx_av[ctx->cIdx], ctx->d_ctx_bv[ctx->cIdx], ctx->d_ctx_key1v[ctx->cIdx], ctx->d_ctx_key2v[ctx->cIdx]));
 	}
 }
 
@@ -423,36 +440,36 @@ extern "C" void cryptonight_extra_cpu_final(nvid_ctx* ctx, uint32_t startNonce, 
 	dim3 grid((wsize + threadsperblock - 1) / threadsperblock);
 	dim3 block(threadsperblock);
 
-	CUDA_CHECK(ctx->device_id, cudaMemset(ctx->d_result_nonce, 0xFF, 10 * sizeof(uint32_t)));
-	CUDA_CHECK(ctx->device_id, cudaMemset(ctx->d_result_count, 0, sizeof(uint32_t)));
+	CUDA_CHECK(ctx->device_id, cudaMemsetAsync(ctx->d_result_noncev[ctx->cIdx], 0xFF, 10 * sizeof(uint32_t), ctx->stream[ctx->cIdx]));
+	CUDA_CHECK(ctx->device_id, cudaMemsetAsync(ctx->d_result_countv[ctx->cIdx], 0, sizeof(uint32_t), ctx->stream[ctx->cIdx]));
 
 	if(miner_algo == cryptonight_heavy)
 	{
 		CUDA_CHECK_MSG_KERNEL(
 			ctx->device_id,
 			"\n**suggestion: Try to increase the value of the attribute 'bfactor' in the NVIDIA config file.**",
-			cryptonight_extra_gpu_final<cryptonight_heavy><<<grid, block>>>(wsize, target, ctx->d_result_count, ctx->d_result_nonce, ctx->d_ctx_state, ctx->d_ctx_key2));
+			cryptonight_extra_gpu_final<cryptonight_heavy><<<grid, block, 0, ctx->stream[ctx->cIdx]>>>(wsize, target, ctx->d_result_countv[ctx->cIdx], ctx->d_result_noncev[ctx->cIdx], ctx->d_ctx_statev[ctx->cIdx], ctx->d_ctx_key2v[ctx->cIdx]));
 	}
 	else if(miner_algo == cryptonight_haven)
 	{
 		CUDA_CHECK_MSG_KERNEL(
 			ctx->device_id,
 			"\n**suggestion: Try to increase the value of the attribute 'bfactor' in the NVIDIA config file.**",
-			cryptonight_extra_gpu_final<cryptonight_haven><<<grid, block>>>(wsize, target, ctx->d_result_count, ctx->d_result_nonce, ctx->d_ctx_state, ctx->d_ctx_key2));
+			cryptonight_extra_gpu_final<cryptonight_haven><<<grid, block, 0, ctx->stream[ctx->cIdx]>>>(wsize, target, ctx->d_result_countv[ctx->cIdx], ctx->d_result_noncev[ctx->cIdx], ctx->d_ctx_statev[ctx->cIdx], ctx->d_ctx_key2v[ctx->cIdx]));
 	}
 	else if(miner_algo == cryptonight_superfast)
 	{
 		CUDA_CHECK_MSG_KERNEL(
 			ctx->device_id,
 			"\n**suggestion: Try to increase the value of the attribute 'bfactor' in the NVIDIA config file.**",
-			cryptonight_extra_gpu_final<cryptonight_superfast><<<grid, block>>>(wsize, target, ctx->d_result_count, ctx->d_result_nonce, ctx->d_ctx_state, ctx->d_ctx_key2));
+			cryptonight_extra_gpu_final<cryptonight_superfast><<<grid, block, 0, ctx->stream[ctx->cIdx]>>>(wsize, target, ctx->d_result_countv[ctx->cIdx], ctx->d_result_noncev[ctx->cIdx], ctx->d_ctx_statev[ctx->cIdx], ctx->d_ctx_key2v[ctx->cIdx]));
 	}
 	else if(miner_algo == cryptonight_bittube2)
 	{
 		CUDA_CHECK_MSG_KERNEL(
 			ctx->device_id,
 			"\n**suggestion: Try to increase the value of the attribute 'bfactor' in the NVIDIA config file.**",
-			cryptonight_extra_gpu_final<cryptonight_bittube2><<<grid, block>>>(wsize, target, ctx->d_result_count, ctx->d_result_nonce, ctx->d_ctx_state, ctx->d_ctx_key2));
+			cryptonight_extra_gpu_final<cryptonight_bittube2><<<grid, block, 0, ctx->stream[ctx->cIdx]>>>(wsize, target, ctx->d_result_countv[ctx->cIdx], ctx->d_result_noncev[ctx->cIdx], ctx->d_ctx_statev[ctx->cIdx], ctx->d_ctx_key2v[ctx->cIdx]));
 	}
 	else if(miner_algo == cryptonight_gpu)
 	{
@@ -460,7 +477,7 @@ extern "C" void cryptonight_extra_cpu_final(nvid_ctx* ctx, uint32_t startNonce, 
 		CUDA_CHECK_MSG_KERNEL(
 			ctx->device_id,
 			"\n**suggestion: Try to increase the value of the attribute 'bfactor' in the NVIDIA config file.**",
-			cryptonight_extra_gpu_final<cryptonight_gpu><<<grid, block>>>(wsize, target, ctx->d_result_count, ctx->d_result_nonce, ctx->d_ctx_state, ctx->d_ctx_key2));
+			cryptonight_extra_gpu_final<cryptonight_gpu><<<grid, block, 0, ctx->stream[ctx->cIdx]>>>(wsize, target, ctx->d_result_countv[ctx->cIdx], ctx->d_result_noncev[ctx->cIdx], ctx->d_ctx_statev[ctx->cIdx], ctx->d_ctx_key2v[ctx->cIdx]));
 	}
 	else
 	{
@@ -468,14 +485,23 @@ extern "C" void cryptonight_extra_cpu_final(nvid_ctx* ctx, uint32_t startNonce, 
 		CUDA_CHECK_MSG_KERNEL(
 			ctx->device_id,
 			"\n**suggestion: Try to increase the value of the attribute 'bfactor' in the NVIDIA config file.**",
-			cryptonight_extra_gpu_final<invalid_algo><<<grid, block>>>(wsize, target, ctx->d_result_count, ctx->d_result_nonce, ctx->d_ctx_state, ctx->d_ctx_key2));
+			cryptonight_extra_gpu_final<invalid_algo><<<grid, block, 0, ctx->stream[ctx->cIdx]>>>(wsize, target, ctx->d_result_countv[ctx->cIdx], ctx->d_result_noncev[ctx->cIdx], ctx->d_ctx_statev[ctx->cIdx], ctx->d_ctx_key2v[ctx->cIdx]));
 	}
 
-	CUDA_CHECK(ctx->device_id, cudaMemcpy(rescount, ctx->d_result_count, sizeof(uint32_t), cudaMemcpyDeviceToHost));
+	CUDA_CHECK(ctx->device_id, cudaMemcpyAsync(rescount, ctx->d_result_countv[ctx->cIdx], sizeof(uint32_t), cudaMemcpyDeviceToHost, ctx->stream[ctx->cIdx]));
 	CUDA_CHECK_MSG(
 		ctx->device_id,
 		"\n**suggestion: Try to increase the attribute 'bfactor' in the NVIDIA config file.**",
-		cudaMemcpy(resnonce, ctx->d_result_nonce, 10 * sizeof(uint32_t), cudaMemcpyDeviceToHost));
+		cudaMemcpyAsync(resnonce, ctx->d_result_noncev[ctx->cIdx], 10 * sizeof(uint32_t), cudaMemcpyDeviceToHost, ctx->stream[ctx->cIdx]));
+
+}
+
+extern "C" void cryptonight_sync(nvid_ctx* ctx, uint32_t startNonce, uint32_t* rescount, uint32_t* resnonce)
+{
+	CUDA_CHECK(
+		ctx->device_id,
+		cudaStreamSynchronize(ctx->stream[ctx->cIdx])
+	);
 
 	/* There is only a 32bit limit for the counter on the device side
 	 * therefore this value can be greater than 10, in that case limit rescount
@@ -485,6 +511,15 @@ extern "C" void cryptonight_extra_cpu_final(nvid_ctx* ctx, uint32_t startNonce, 
 		*rescount = 10;
 	for(int i = 0; i < *rescount; i++)
 		resnonce[i] += startNonce;
+//#if 0
+	static int x=0;
+	x++;
+	if(x>=4)
+	{
+		cudaDeviceSynchronize();
+		std::exit(0);
+	}
+//#endif
 }
 
 extern "C" int cuda_get_devicecount(int* deviceCount)

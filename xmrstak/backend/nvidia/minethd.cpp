@@ -269,16 +269,18 @@ void minethd::work_main()
 					break;
 			}
 
-			uint32_t foundNonce[10];
-			uint32_t foundCount;
-
 			cryptonight_extra_cpu_prepare(&ctx, iNonce, miner_algo);
 
 			cryptonight_core_cpu_hash(&ctx, miner_algo, iNonce, cpu_ctx->cn_r_ctx.height);
 
-			cryptonight_extra_cpu_final(&ctx, iNonce, oWork.iTarget, &foundCount, foundNonce, miner_algo);
+			cryptonight_extra_cpu_final(&ctx, iNonce, oWork.iTarget, &ctx.foundCount[ctx.cIdx][0], ctx.foundNonce[ctx.cIdx], miner_algo);
 
-			for(size_t i = 0; i < foundCount; i++)
+			ctx.nonce[ctx.cIdx] = iNonce;
+			ctx.cIdx = (ctx.cIdx + 1) % 2;
+			cryptonight_sync(&ctx, ctx.nonce[ctx.cIdx], &ctx.foundCount[ctx.cIdx][0], ctx.foundNonce[ctx.cIdx]);
+
+			//std::cout<<ctx.foundCount[ctx.cIdx][0]<<std::endl;
+			for(size_t i = 0; i < ctx.foundCount[ctx.cIdx][0]; i++)
 			{
 
 				uint8_t bWorkBlob[128];
@@ -287,18 +289,22 @@ void minethd::work_main()
 				memcpy(bWorkBlob, oWork.bWorkBlob, oWork.iWorkSize);
 				memset(bResult, 0, sizeof(job_result::bResult));
 
-				*(uint32_t*)(bWorkBlob + 39) = foundNonce[i];
+				*(uint32_t*)(bWorkBlob + 39) = ctx.foundNonce[ctx.cIdx][i];
 
 				cpu_ctx->hash_fn(bWorkBlob, oWork.iWorkSize, bResult, &cpu_ctx, miner_algo);
 				if((*((uint64_t*)(bResult + 24))) < oWork.iTarget)
-					executor::inst()->push_event(ex_event(job_result(oWork.sJobID, foundNonce[i], bResult, iThreadNo, miner_algo), oWork.iPoolId));
+					executor::inst()->push_event(ex_event(job_result(oWork.sJobID, ctx.foundNonce[ctx.cIdx][i], bResult, iThreadNo, miner_algo), oWork.iPoolId));
 				else
 					executor::inst()->push_event(ex_event("NVIDIA Invalid Result", ctx.device_id, oWork.iPoolId));
 			}
 
+
+
 			iNonce += h_per_round;
 			updateStats(h_per_round, oWork.iPoolId);
 			std::this_thread::yield();
+
+
 		}
 
 		globalStates::inst().consume_work(oWork, iJobNo);

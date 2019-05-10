@@ -836,14 +836,14 @@ void cryptonight_core_gpu_hash(nvid_ctx* ctx, uint32_t nonce, const xmrstak_algo
 
 	for(int i = 0; i < partcountOneThree; i++)
 	{
-		CUDA_CHECK_KERNEL(ctx->device_id, cryptonight_core_gpu_phase1<<<grid, block8>>>(
+		CUDA_CHECK_KERNEL(ctx->device_id, cryptonight_core_gpu_phase1<<<grid, block8, 0, ctx->stream[ctx->cIdx]>>>(
 											  ITERATIONS,
 											  MEM,
 											  ctx->device_blocks * ctx->device_threads,
 											  bfactorOneThree, i,
-											  ctx->d_long_state,
-											  (ALGO == cryptonight_heavy || ALGO == cryptonight_haven || ALGO == cryptonight_bittube2 || ALGO == cryptonight_superfast ? ctx->d_ctx_state2 : ctx->d_ctx_state),
-											  ctx->d_ctx_key1));
+											  ctx->d_long_statev[ctx->cIdx],
+											  (ALGO == cryptonight_heavy || ALGO == cryptonight_haven || ALGO == cryptonight_bittube2 || ALGO == cryptonight_superfast ? ctx->d_ctx_state2v[ctx->cIdx] : ctx->d_ctx_statev[ctx->cIdx]),
+											  ctx->d_ctx_key1v[ctx->cIdx]));
 
 		if(partcount > 1 && ctx->device_bsleep > 0)
 			compat_usleep(ctx->device_bsleep);
@@ -864,17 +864,17 @@ void cryptonight_core_gpu_hash(nvid_ctx* ctx, uint32_t nonce, const xmrstak_algo
 					block2,
 					sizeof(uint64_t) * block.x * 8 +
 						// shuffle memory for fermi gpus
-						block2.x * sizeof(uint32_t) * static_cast<int>(ctx->device_arch[0] < 3)>>>(
+						block2.x * sizeof(uint32_t) * static_cast<int>(ctx->device_arch[0] < 3), ctx->stream[ctx->cIdx]>>>(
 					ITERATIONS,
 					MEM,
 					MASK,
 					ctx->device_blocks * ctx->device_threads,
 					ctx->device_bfactor,
 					i,
-					ctx->d_long_state,
-					ctx->d_ctx_a,
-					ctx->d_ctx_b,
-					ctx->d_ctx_state,
+					ctx->d_long_statev[ctx->cIdx],
+					ctx->d_ctx_av[ctx->cIdx],
+					ctx->d_ctx_bv[ctx->cIdx],
+					ctx->d_ctx_statev[ctx->cIdx],
 					nonce,
 					ctx->d_input));
 		}
@@ -884,7 +884,7 @@ void cryptonight_core_gpu_hash(nvid_ctx* ctx, uint32_t nonce, const xmrstak_algo
 			void* args[] = {
 				&ITERATIONS, &MEM, &MASK,
 				&numThreads, &ctx->device_bfactor, &i,
-				&ctx->d_long_state, &ctx->d_ctx_a, &ctx->d_ctx_b, &ctx->d_ctx_state, &nonce, &ctx->d_input};
+				&ctx->d_long_statev[ctx->cIdx], &ctx->d_ctx_av[ctx->cIdx], &ctx->d_ctx_bv[ctx->cIdx], &ctx->d_ctx_statev[ctx->cIdx], &nonce, &ctx->d_input};
 			CU_CHECK(ctx->device_id, cuLaunchKernel(
 										 ctx->kernel,
 										 grid.x, grid.y, grid.z,
@@ -892,7 +892,7 @@ void cryptonight_core_gpu_hash(nvid_ctx* ctx, uint32_t nonce, const xmrstak_algo
 										 sizeof(uint64_t) * block.x * 8 +
 											 // shuffle memory for fermi gpus
 											 block2.x * sizeof(uint32_t) * static_cast<int>(ctx->device_arch[0] < 3),
-										 nullptr,
+										 ctx->stream[ctx->cIdx],
 										 args, 0));
 			CU_CHECK(ctx->device_id, cuCtxSynchronize());
 		}
@@ -904,17 +904,17 @@ void cryptonight_core_gpu_hash(nvid_ctx* ctx, uint32_t nonce, const xmrstak_algo
 				cryptonight_core_gpu_phase2_quad<ALGO><<<
 					grid,
 					block4,
-					block4.x * sizeof(uint32_t) * static_cast<int>(ctx->device_arch[0] < 3)>>>(
+					block4.x * sizeof(uint32_t) * static_cast<int>(ctx->device_arch[0] < 3), ctx->stream[ctx->cIdx]>>>(
 					ITERATIONS,
 					MEM,
 					MASK,
 					ctx->device_blocks * ctx->device_threads,
 					ctx->device_bfactor,
 					i,
-					ctx->d_long_state,
-					ctx->d_ctx_a,
-					ctx->d_ctx_b,
-					ctx->d_ctx_state,
+					ctx->d_long_statev[ctx->cIdx],
+					ctx->d_ctx_av[ctx->cIdx],
+					ctx->d_ctx_bv[ctx->cIdx],
+					ctx->d_ctx_statev[ctx->cIdx],
 					nonce,
 					ctx->d_input));
 		}
@@ -936,13 +936,13 @@ void cryptonight_core_gpu_hash(nvid_ctx* ctx, uint32_t nonce, const xmrstak_algo
 		CUDA_CHECK_KERNEL(ctx->device_id, cryptonight_core_gpu_phase3<ALGO><<<
 											  grid,
 											  block8,
-											  block8.x * sizeof(uint32_t) * static_cast<int>(ctx->device_arch[0] < 3)>>>(
+											  block8.x * sizeof(uint32_t) * static_cast<int>(ctx->device_arch[0] < 3), ctx->stream[ctx->cIdx]>>>(
 											  ITERATIONS,
 											  MEM,
 											  ctx->device_blocks * ctx->device_threads,
 											  bfactorOneThree, i,
-											  ctx->d_long_state,
-											  ctx->d_ctx_state, ctx->d_ctx_key2));
+											  ctx->d_long_statev[ctx->cIdx],
+											  ctx->d_ctx_statev[ctx->cIdx], ctx->d_ctx_key2v[ctx->cIdx]));
 	}
 }
 
@@ -963,7 +963,7 @@ void cryptonight_core_gpu_hash_gpu(nvid_ctx* ctx, uint32_t nonce, const xmrstak_
 
 	CUDA_CHECK_KERNEL(
 		ctx->device_id,
-		xmrstak::nvidia::cn_explode_gpu<<<intensity, 32>>>(MEM, (int*)ctx->d_ctx_state, (int*)ctx->d_long_state));
+		xmrstak::nvidia::cn_explode_gpu<<<intensity, 32, 0, ctx->stream[ctx->cIdx]>>>(MEM, (int*)ctx->d_ctx_statev[ctx->cIdx], (int*)ctx->d_long_statev[ctx->cIdx]));
 
 	int partcount = 1 << ctx->device_bfactor;
 	for(int i = 0; i < partcount; i++)
@@ -971,16 +971,16 @@ void cryptonight_core_gpu_hash_gpu(nvid_ctx* ctx, uint32_t nonce, const xmrstak_
 		CUDA_CHECK_KERNEL(
 			ctx->device_id,
 			// 36 x 16byte x numThreads
-			xmrstak::nvidia::cryptonight_core_gpu_phase2_gpu<<<ctx->device_blocks, ctx->device_threads * 16, 32 * 16 * ctx->device_threads>>>(
+			xmrstak::nvidia::cryptonight_core_gpu_phase2_gpu<<<ctx->device_blocks, ctx->device_threads * 16, 32 * 16 * ctx->device_threads, ctx->stream[ctx->cIdx]>>>(
 				ITERATIONS,
 				MEM,
 				MASK,
-				(int*)ctx->d_ctx_state,
-				(int*)ctx->d_long_state,
+				(int*)ctx->d_ctx_statev[ctx->cIdx],
+				(int*)ctx->d_long_statev[ctx->cIdx],
 				ctx->device_bfactor,
 				i,
-				ctx->d_ctx_a,
-				ctx->d_ctx_b));
+				ctx->d_ctx_av[ctx->cIdx],
+				ctx->d_ctx_bv[ctx->cIdx]));
 	}
 
 	/* bfactor for phase 3
@@ -1007,13 +1007,13 @@ void cryptonight_core_gpu_hash_gpu(nvid_ctx* ctx, uint32_t nonce, const xmrstak_
 		CUDA_CHECK_KERNEL(ctx->device_id, cryptonight_core_gpu_phase3<ALGO><<<
 											  grid,
 											  block8,
-											  block8.x * sizeof(uint32_t) * static_cast<int>(ctx->device_arch[0] < 3)>>>(
+											  block8.x * sizeof(uint32_t) * static_cast<int>(ctx->device_arch[0] < 3), ctx->stream[ctx->cIdx]>>>(
 											  ITERATIONS,
 											  MEM / 4,
 											  ctx->device_blocks * ctx->device_threads,
 											  bfactorOneThree, i,
-											  ctx->d_long_state,
-											  ctx->d_ctx_state, ctx->d_ctx_key2));
+											  ctx->d_long_statev[ctx->cIdx],
+											  ctx->d_ctx_statev[ctx->cIdx], ctx->d_ctx_key2v[ctx->cIdx]));
 	}
 }
 
