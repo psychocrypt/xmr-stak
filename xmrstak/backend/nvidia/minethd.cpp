@@ -258,6 +258,8 @@ void minethd::work_main()
 		if(oWork.bNiceHash)
 			iNonce = *(uint32_t*)(oWork.bWorkBlob + 39);
 
+		bool firstRound = true;
+
 		while(globalStates::inst().iGlobalJobNo.load(std::memory_order_relaxed) == iJobNo)
 		{
 			//Allocate a new nonce every 16 rounds
@@ -277,32 +279,35 @@ void minethd::work_main()
 
 			ctx.nonce[ctx.cIdx] = iNonce;
 			ctx.cIdx = (ctx.cIdx + 1) % 2;
-			cryptonight_sync(&ctx, ctx.nonce[ctx.cIdx], &ctx.foundCount[ctx.cIdx][0], ctx.foundNonce[ctx.cIdx]);
-
-			//std::cout<<ctx.foundCount[ctx.cIdx][0]<<std::endl;
-			for(size_t i = 0; i < ctx.foundCount[ctx.cIdx][0]; i++)
+			if(!firstRound)
 			{
+				cryptonight_sync(&ctx, ctx.nonce[ctx.cIdx], &ctx.foundCount[ctx.cIdx][0], ctx.foundNonce[ctx.cIdx]);
 
-				uint8_t bWorkBlob[128];
-				uint8_t bResult[32];
+				//std::cout<<ctx.foundCount[ctx.cIdx][0]<<std::endl;
+				for(size_t i = 0; i < ctx.foundCount[ctx.cIdx][0]; i++)
+				{
 
-				memcpy(bWorkBlob, oWork.bWorkBlob, oWork.iWorkSize);
-				memset(bResult, 0, sizeof(job_result::bResult));
+					uint8_t bWorkBlob[128];
+					uint8_t bResult[32];
 
-				*(uint32_t*)(bWorkBlob + 39) = ctx.foundNonce[ctx.cIdx][i];
+					memcpy(bWorkBlob, oWork.bWorkBlob, oWork.iWorkSize);
+					memset(bResult, 0, sizeof(job_result::bResult));
 
-				cpu_ctx->hash_fn(bWorkBlob, oWork.iWorkSize, bResult, &cpu_ctx, miner_algo);
-				if((*((uint64_t*)(bResult + 24))) < oWork.iTarget)
-					executor::inst()->push_event(ex_event(job_result(oWork.sJobID, ctx.foundNonce[ctx.cIdx][i], bResult, iThreadNo, miner_algo), oWork.iPoolId));
-				else
-					executor::inst()->push_event(ex_event("NVIDIA Invalid Result", ctx.device_id, oWork.iPoolId));
+					*(uint32_t*)(bWorkBlob + 39) = ctx.foundNonce[ctx.cIdx][i];
+
+					cpu_ctx->hash_fn(bWorkBlob, oWork.iWorkSize, bResult, &cpu_ctx, miner_algo);
+					if((*((uint64_t*)(bResult + 24))) < oWork.iTarget)
+						executor::inst()->push_event(ex_event(job_result(oWork.sJobID, ctx.foundNonce[ctx.cIdx][i], bResult, iThreadNo, miner_algo), oWork.iPoolId));
+					else
+						executor::inst()->push_event(ex_event("NVIDIA Invalid Result", ctx.device_id, oWork.iPoolId));
+				}
+
+				iNonce += h_per_round;
+				updateStats(h_per_round, oWork.iPoolId);
 			}
-
-
-
-			iNonce += h_per_round;
-			updateStats(h_per_round, oWork.iPoolId);
 			std::this_thread::yield();
+
+			firstRound = false;
 
 
 		}

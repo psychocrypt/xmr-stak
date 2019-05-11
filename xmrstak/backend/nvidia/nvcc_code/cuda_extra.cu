@@ -440,7 +440,7 @@ extern "C" void cryptonight_extra_cpu_final(nvid_ctx* ctx, uint32_t startNonce, 
 	dim3 grid((wsize + threadsperblock - 1) / threadsperblock);
 	dim3 block(threadsperblock);
 
-	CUDA_CHECK(ctx->device_id, cudaMemsetAsync(ctx->d_result_noncev[ctx->cIdx], 0xFF, 10 * sizeof(uint32_t), ctx->stream[ctx->cIdx]));
+	//CUDA_CHECK(ctx->device_id, cudaMemsetAsync(ctx->d_result_noncev[ctx->cIdx], 0xFF, 10 * sizeof(uint32_t), ctx->stream[ctx->cIdx]));
 	CUDA_CHECK(ctx->device_id, cudaMemsetAsync(ctx->d_result_countv[ctx->cIdx], 0, sizeof(uint32_t), ctx->stream[ctx->cIdx]));
 
 	if(miner_algo == cryptonight_heavy)
@@ -511,15 +511,15 @@ extern "C" void cryptonight_sync(nvid_ctx* ctx, uint32_t startNonce, uint32_t* r
 		*rescount = 10;
 	for(int i = 0; i < *rescount; i++)
 		resnonce[i] += startNonce;
-//#if 0
+#if 0
 	static int x=0;
 	x++;
-	if(x>=4)
+	if(x>=10)
 	{
 		cudaDeviceSynchronize();
 		std::exit(0);
 	}
-//#endif
+#endif
 }
 
 extern "C" int cuda_get_devicecount(int* deviceCount)
