@@ -51,9 +51,7 @@ __forceinline__ __device__ uint64_t cuda_rotl64(const uint64_t value, const int 
 
 __device__ __forceinline__ void cn_keccakf2(uint64_t* s)
 {
-	uint8_t i;
-
-	for(i = 0; i < 24; ++i)
+	for(int8_t i = 0; i < 24; ++i)
 	{
 		uint64_t bc[5], tmpxor[5], tmp1, tmp2;
 

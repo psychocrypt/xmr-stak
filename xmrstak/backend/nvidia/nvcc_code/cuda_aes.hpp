@@ -3,6 +3,8 @@
 
 #include <stdint.h>
 
+#include "cuda_extra.hpp"
+
 #define N_COLS 4
 #define WPOLY 0x011b
 
@@ -265,6 +267,7 @@ static __constant__ uint32_t d_t_fn[1024] =
 		0x82c34141U, 0x29b09999U, 0x5a772d2dU, 0x1e110f0fU,
 		0x7bcbb0b0U, 0xa8fc5454U, 0x6dd6bbbbU, 0x2c3a1616U};
 
+#define t_fn32(x) (sharedMemory[(x) * 32])
 #define t_fn0(x) (sharedMemory[(x)])
 #define t_fn1(x) (sharedMemory[256 + (x)])
 #define t_fn2(x) (sharedMemory[512 + (x)])
@@ -275,6 +278,12 @@ static __constant__ uint32_t d_t_fn[1024] =
 	y[1] = (k)[1] ^ (t_fn0(x[1] & 0xff) ^ t_fn1((x[2] >> 8) & 0xff) ^ t_fn2((x[3] >> 16) & 0xff) ^ t_fn3((x[0] >> 24))); \
 	y[2] = (k)[2] ^ (t_fn0(x[2] & 0xff) ^ t_fn1((x[3] >> 8) & 0xff) ^ t_fn2((x[0] >> 16) & 0xff) ^ t_fn3((x[1] >> 24))); \
 	y[3] = (k)[3] ^ (t_fn0(x[3] & 0xff) ^ t_fn1((x[0] >> 8) & 0xff) ^ t_fn2((x[1] >> 16) & 0xff) ^ t_fn3((x[2] >> 24)));
+
+#define round32(dummy, y, x, k)                                                                                            \
+	y[0] = (k)[0] ^ (t_fn32(x[0] & 0xff) ^ ROTL32(t_fn32((x[1] >> 8) & 0xff),8) ^ ROTL32(t_fn32((x[2] >> 16) & 0xff),16) ^ ROTL32(t_fn32((x[3] >> 24)),24)); \
+	y[1] = (k)[1] ^ (t_fn32(x[1] & 0xff) ^ ROTL32(t_fn32((x[2] >> 8) & 0xff),8) ^ ROTL32(t_fn32((x[3] >> 16) & 0xff),16) ^ ROTL32(t_fn32((x[0] >> 24)),24)); \
+	y[2] = (k)[2] ^ (t_fn32(x[2] & 0xff) ^ ROTL32(t_fn32((x[3] >> 8) & 0xff),8) ^ ROTL32(t_fn32((x[0] >> 16) & 0xff),16) ^ ROTL32(t_fn32((x[1] >> 24)),24)); \
+	y[3] = (k)[3] ^ (t_fn32(x[3] & 0xff) ^ ROTL32(t_fn32((x[0] >> 8) & 0xff),8) ^ ROTL32(t_fn32((x[1] >> 16) & 0xff),16) ^ ROTL32(t_fn32((x[2] >> 24)),24));
 
 __device__ __forceinline__ static void cn_aes_single_round(uint32_t* __restrict__ sharedMemory, const uint32_t* __restrict__ in, uint32_t* __restrict__ out, const uint32_t* __restrict__ expandedKey)
 {
@@ -296,10 +305,31 @@ __device__ __forceinline__ static void cn_aes_pseudo_round_mut(const uint32_t* _
 	round(sharedMemory, val, b1, expandedKey + 9 * N_COLS);
 }
 
+__device__ __forceinline__ static void cn_aes_pseudo_round_mut32(const uint32_t* __restrict__ sharedMemory, uint32_t* __restrict__ val, const uint32_t* __restrict__ expandedKey)
+{
+	uint32_t b1[4];
+	round32(sharedMemory, b1, val, expandedKey);
+	round32(sharedMemory, val, b1, expandedKey + 1 * N_COLS);
+	round32(sharedMemory, b1, val, expandedKey + 2 * N_COLS);
+	round32(sharedMemory, val, b1, expandedKey + 3 * N_COLS);
+	round32(sharedMemory, b1, val, expandedKey + 4 * N_COLS);
+	round32(sharedMemory, val, b1, expandedKey + 5 * N_COLS);
+	round32(sharedMemory, b1, val, expandedKey + 6 * N_COLS);
+	round32(sharedMemory, val, b1, expandedKey + 7 * N_COLS);
+	round32(sharedMemory, b1, val, expandedKey + 8 * N_COLS);
+	round32(sharedMemory, val, b1, expandedKey + 9 * N_COLS);
+}
+
 __device__ __forceinline__ static void cn_aes_gpu_init(uint32_t* sharedMemory)
 {
 	for(int i = threadIdx.x; i < 1024; i += blockDim.x)
 		sharedMemory[i] = d_t_fn[i];
+}
+
+__device__ __forceinline__ static void cn_aes_gpu_init32(uint32_t* sharedMemory)
+{
+	for(int i = threadIdx.x; i < 256 * 32; i += blockDim.x)
+		sharedMemory[i] = d_t_fn[i/32];
 }
 
 __device__ __forceinline__ static void cn_aes_gpu_init_half(uint32_t* sharedMemory)

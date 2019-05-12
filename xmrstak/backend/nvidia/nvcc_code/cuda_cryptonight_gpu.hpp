@@ -397,6 +397,7 @@ struct SharedMemChunk
 	__m128 va[16];
 };
 
+__launch_bounds__(128, 8)
 __global__ void cryptonight_core_gpu_phase2_gpu(
 	const uint32_t ITERATIONS, const size_t MEMORY, const uint32_t MASK,
 	int32_t* spad, int* lpad_in, int bfactor, int partidx, uint32_t* roundVs, uint32_t* roundS)
@@ -435,7 +436,7 @@ __global__ void cryptonight_core_gpu_phase2_gpu(
 	const uint32_t tidm = tid % 4;
 	const uint32_t block = tidd * 16 + tidm;
 
-	for(size_t i = 0; i < batchsize; i++)
+	for(int i = 0; i < batchsize; i++)
 	{
 		sync();
 		int tmp = ((int*)scratchpad_ptr(s, tidd, lpad, MASK))[tidm];
@@ -530,7 +531,10 @@ __global__ void cn_explode_gpu(const size_t MEMORY, int32_t* spad_in, int* lpad_
 	for(int i = threadIdx.x; i < 25; i += blockDim.x)
 		state[i] = spad[i];
 
-	sync();
+	if(blockDim.x > 32)
+		__syncthreads();
+	else
+		sync();
 
 	for(uint64_t i = threadIdx.x; i < MEMORY / 512; i += blockDim.x)
 	{

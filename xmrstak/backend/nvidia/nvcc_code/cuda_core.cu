@@ -759,9 +759,12 @@ __global__ void cryptonight_core_gpu_phase3(
 	const uint32_t ITERATIONS, const size_t MEMORY,
 	int threads, int bfactor, int partidx, const uint32_t* __restrict__ long_state, uint32_t* __restrict__ d_ctx_state, uint32_t* __restrict__ d_ctx_key2)
 {
-	__shared__ uint32_t sharedMemory[1024];
+	__shared__ uint32_t sharedMemoryX[256 * 32];
 
-	cn_aes_gpu_init(sharedMemory);
+	const int twidx = threadIdx.x % 32;
+	uint32_t* sharedMemory = sharedMemoryX + twidx;
+
+	cn_aes_gpu_init32(sharedMemoryX);
 	__syncthreads();
 
 	int thread = (blockDim.x * blockIdx.x + threadIdx.x) >> 3;
@@ -794,7 +797,7 @@ __global__ void cryptonight_core_gpu_phase3(
 		for(int j = 0; j < 4; ++j)
 			text[j] ^= long_state[((IndexType)thread * MEMORY) + (sub + i + j)];
 
-		cn_aes_pseudo_round_mut(sharedMemory, text, key);
+		cn_aes_pseudo_round_mut32(sharedMemory, text, key);
 
 		if(ALGO == cryptonight_gpu || ALGO == cryptonight_heavy || ALGO == cryptonight_haven ||
 			ALGO == cryptonight_bittube2 || ALGO == cryptonight_superfast)
@@ -934,9 +937,9 @@ void cryptonight_core_gpu_hash(nvid_ctx* ctx, uint32_t nonce, const xmrstak_algo
 	for(int i = 0; i < roundsPhase3; i++)
 	{
 		CUDA_CHECK_KERNEL(ctx->device_id, cryptonight_core_gpu_phase3<ALGO><<<
-											  grid,
-											  block8,
-											  block8.x * sizeof(uint32_t) * static_cast<int>(ctx->device_arch[0] < 3)>>>(
+											  grid.x / 2,
+											  block8.x * 2,
+											  2 * block8.x * sizeof(uint32_t) * static_cast<int>(ctx->device_arch[0] < 3)>>>(
 											  ITERATIONS,
 											  MEM,
 											  ctx->device_blocks * ctx->device_threads,
@@ -963,7 +966,7 @@ void cryptonight_core_gpu_hash_gpu(nvid_ctx* ctx, uint32_t nonce, const xmrstak_
 
 	CUDA_CHECK_KERNEL(
 		ctx->device_id,
-		xmrstak::nvidia::cn_explode_gpu<<<intensity, 32>>>(MEM, (int*)ctx->d_ctx_state, (int*)ctx->d_long_state));
+		xmrstak::nvidia::cn_explode_gpu<<<intensity, 128>>>(MEM, (int*)ctx->d_ctx_state, (int*)ctx->d_long_state));
 
 	int partcount = 1 << ctx->device_bfactor;
 	for(int i = 0; i < partcount; i++)
@@ -986,9 +989,9 @@ void cryptonight_core_gpu_hash_gpu(nvid_ctx* ctx, uint32_t nonce, const xmrstak_
 	/* bfactor for phase 3
 	 *
 	 * 3 consume less time than phase 2, therefore we begin with the
-	 * kernel splitting if the user defined a `bfactor >= 5`
+	 * kernel splitting if the user defined a `bfactor >= 8`
 	 */
-	int bfactorOneThree = ctx->device_bfactor - 4;
+	int bfactorOneThree = ctx->device_bfactor - 8;
 	if(bfactorOneThree < 0)
 		bfactorOneThree = 0;
 
@@ -1005,9 +1008,9 @@ void cryptonight_core_gpu_hash_gpu(nvid_ctx* ctx, uint32_t nonce, const xmrstak_
 	for(int i = 0; i < roundsPhase3; i++)
 	{
 		CUDA_CHECK_KERNEL(ctx->device_id, cryptonight_core_gpu_phase3<ALGO><<<
-											  grid,
-											  block8,
-											  block8.x * sizeof(uint32_t) * static_cast<int>(ctx->device_arch[0] < 3)>>>(
+											  grid.x / 2,
+											  block8.x * 2 ,
+											  2 * block8.x * sizeof(uint32_t) * static_cast<int>(ctx->device_arch[0] < 3)>>>(
 											  ITERATIONS,
 											  MEM / 4,
 											  ctx->device_blocks * ctx->device_threads,
