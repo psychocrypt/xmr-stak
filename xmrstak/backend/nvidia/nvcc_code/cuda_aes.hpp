@@ -279,11 +279,11 @@ static __constant__ uint32_t d_t_fn[1024] =
 	y[2] = (k)[2] ^ (t_fn0(x[2] & 0xff) ^ t_fn1((x[3] >> 8) & 0xff) ^ t_fn2((x[0] >> 16) & 0xff) ^ t_fn3((x[1] >> 24))); \
 	y[3] = (k)[3] ^ (t_fn0(x[3] & 0xff) ^ t_fn1((x[0] >> 8) & 0xff) ^ t_fn2((x[1] >> 16) & 0xff) ^ t_fn3((x[2] >> 24)));
 
-#define round32(dummy, y, x, k)                                                                                            \
-	y[0] = (k)[0] ^ (t_fn32(x[0] & 0xff) ^ ROTL32(t_fn32((x[1] >> 8) & 0xff),8) ^ ROTL32(t_fn32((x[2] >> 16) & 0xff),16) ^ ROTL32(t_fn32((x[3] >> 24)),24)); \
-	y[1] = (k)[1] ^ (t_fn32(x[1] & 0xff) ^ ROTL32(t_fn32((x[2] >> 8) & 0xff),8) ^ ROTL32(t_fn32((x[3] >> 16) & 0xff),16) ^ ROTL32(t_fn32((x[0] >> 24)),24)); \
-	y[2] = (k)[2] ^ (t_fn32(x[2] & 0xff) ^ ROTL32(t_fn32((x[3] >> 8) & 0xff),8) ^ ROTL32(t_fn32((x[0] >> 16) & 0xff),16) ^ ROTL32(t_fn32((x[1] >> 24)),24)); \
-	y[3] = (k)[3] ^ (t_fn32(x[3] & 0xff) ^ ROTL32(t_fn32((x[0] >> 8) & 0xff),8) ^ ROTL32(t_fn32((x[1] >> 16) & 0xff),16) ^ ROTL32(t_fn32((x[2] >> 24)),24));
+#define round32(dummy, a, b, k)                                                                                            \
+	a.x = (k)[0] ^ (t_fn32(b.x & 0xff) ^ ROTL32(t_fn32((b.y >> 8) & 0xff),8) ^ ROTL32(t_fn32((b.z >> 16) & 0xff),16) ^ ROTL32(t_fn32((b.w >> 24)),24)); \
+	a.y = (k)[1] ^ (t_fn32(b.y & 0xff) ^ ROTL32(t_fn32((b.z >> 8) & 0xff),8) ^ ROTL32(t_fn32((b.w >> 16) & 0xff),16) ^ ROTL32(t_fn32((b.x >> 24)),24)); \
+	a.z = (k)[2] ^ (t_fn32(b.z & 0xff) ^ ROTL32(t_fn32((b.w >> 8) & 0xff),8) ^ ROTL32(t_fn32((b.x >> 16) & 0xff),16) ^ ROTL32(t_fn32((b.y >> 24)),24)); \
+	a.w = (k)[3] ^ (t_fn32(b.w & 0xff) ^ ROTL32(t_fn32((b.x >> 8) & 0xff),8) ^ ROTL32(t_fn32((b.y >> 16) & 0xff),16) ^ ROTL32(t_fn32((b.z >> 24)),24));
 
 __device__ __forceinline__ static void cn_aes_single_round(uint32_t* __restrict__ sharedMemory, const uint32_t* __restrict__ in, uint32_t* __restrict__ out, const uint32_t* __restrict__ expandedKey)
 {
@@ -305,9 +305,9 @@ __device__ __forceinline__ static void cn_aes_pseudo_round_mut(const uint32_t* _
 	round(sharedMemory, val, b1, expandedKey + 9 * N_COLS);
 }
 
-__device__ __forceinline__ static void cn_aes_pseudo_round_mut32(const uint32_t* __restrict__ sharedMemory, uint32_t* __restrict__ val, const uint32_t* __restrict__ expandedKey)
+__device__ __forceinline__ static uint4 cn_aes_pseudo_round_mut32(const uint32_t* __restrict__ sharedMemory, uint4  val, const uint32_t* __restrict__ expandedKey)
 {
-	uint32_t b1[4];
+	uint4 b1;
 	round32(sharedMemory, b1, val, expandedKey);
 	round32(sharedMemory, val, b1, expandedKey + 1 * N_COLS);
 	round32(sharedMemory, b1, val, expandedKey + 2 * N_COLS);
@@ -318,6 +318,7 @@ __device__ __forceinline__ static void cn_aes_pseudo_round_mut32(const uint32_t*
 	round32(sharedMemory, val, b1, expandedKey + 7 * N_COLS);
 	round32(sharedMemory, b1, val, expandedKey + 8 * N_COLS);
 	round32(sharedMemory, val, b1, expandedKey + 9 * N_COLS);
+	return val;
 }
 
 __device__ __forceinline__ static void cn_aes_gpu_init(uint32_t* sharedMemory)

@@ -57,7 +57,7 @@ __forceinline__ __device__ uint64_t cuda_ROTL64(const uint64_t value, const int 
 #define ROTL64(x, n) (((x) << (n)) | ((x) >> (64 - (n))))
 #endif
 
-#if __CUDA_ARCH__ < 350
+#if __CUDA_ARCH__ > 350
 #define ROTL32(x, n) T32(((x) << (n)) | ((x) >> (32 - (n))))
 #define ROTR32(x, n) (((x) >> (n)) | ((x) << (32 - (n))))
 #else

@@ -488,7 +488,7 @@ extern "C" void cryptonight_extra_cpu_final(nvid_ctx* ctx, uint32_t startNonce, 
 //#if 0
 	static int x=0;
 	x++;
-	if(x>=10)
+	if(x>=4)
 	{
 		cudaDeviceSynchronize();
 		std::exit(0);
