@@ -485,15 +485,6 @@ extern "C" void cryptonight_extra_cpu_final(nvid_ctx* ctx, uint32_t startNonce, 
 		*rescount = 10;
 	for(int i = 0; i < *rescount; i++)
 		resnonce[i] += startNonce;
-//#if 0
-	static int x=0;
-	x++;
-	if(x>=4)
-	{
-		cudaDeviceSynchronize();
-		std::exit(0);
-	}
-//#endif
 }
 
 extern "C" int cuda_get_devicecount(int* deviceCount)

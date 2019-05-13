@@ -759,9 +759,9 @@ __global__ void cryptonight_core_gpu_phase3(
 	const uint32_t ITERATIONS, const size_t MEMORY,
 	int threads, int bfactor, int partidx, const uint32_t* const __restrict__ long_state, const uint32_t* const __restrict__ d_ctx_state, uint32_t* __restrict__ d_ctx_key2)
 {
-	__shared__ uint32_t sharedMemoryX[256 * 32];
+	__shared__ uint32_t sharedMemoryX[256 * 16];
 
-	const int twidx = threadIdx.x % 32;
+	const int twidx = threadIdx.x % 16;
 	uint32_t* sharedMemory = sharedMemoryX + twidx;
 
 	cn_aes_gpu_init32(sharedMemoryX);
@@ -942,9 +942,9 @@ void cryptonight_core_gpu_hash(nvid_ctx* ctx, uint32_t nonce, const xmrstak_algo
 	for(int i = 0; i < roundsPhase3; i++)
 	{
 		CUDA_CHECK_KERNEL(ctx->device_id, cryptonight_core_gpu_phase3<ALGO><<<
-											  (grid.x + 1) / 2,
-											  block8.x * 2,
-											  2 * block8.x * sizeof(uint32_t) * static_cast<int>(ctx->device_arch[0] < 3)>>>(
+											  (grid.x + 3) / 4,
+											  block8.x * 4,
+											  4  * block8.x * sizeof(uint32_t) * static_cast<int>(ctx->device_arch[0] < 3)>>>(
 											  ITERATIONS,
 											  MEM,
 											  ctx->device_blocks * ctx->device_threads,
@@ -1013,9 +1013,9 @@ void cryptonight_core_gpu_hash_gpu(nvid_ctx* ctx, uint32_t nonce, const xmrstak_
 	for(int i = 0; i < roundsPhase3; i++)
 	{
 		CUDA_CHECK_KERNEL(ctx->device_id, cryptonight_core_gpu_phase3<ALGO><<<
-											  (grid.x + 1) / 2,
-											  block8.x * 2 ,
-											  2 * block8.x * sizeof(uint32_t) * static_cast<int>(ctx->device_arch[0] < 3)>>>(
+											  (grid.x + 3) / 4,
+											  block8.x * 4 ,
+											  4 * block8.x * sizeof(uint32_t) * static_cast<int>(ctx->device_arch[0] < 3)>>>(
 											  ITERATIONS,
 											  MEM / 4,
 											  ctx->device_blocks * ctx->device_threads,
@@ -1115,4 +1115,14 @@ void cryptonight_core_cpu_hash(nvid_ctx* ctx, const xmrstak_algo& miner_algo, ui
 
 	cuda_hash_fn selected_function = func_table[((miner_algo - 1u) << 1) | digit.to_ulong()];
 	selected_function(ctx, startNonce, miner_algo);
+
+#if 0
+	static int x=0;
+	x++;
+	if(x>=4)
+	{
+		cudaDeviceSynchronize();
+		std::exit(0);
+	}
+#endif
 }

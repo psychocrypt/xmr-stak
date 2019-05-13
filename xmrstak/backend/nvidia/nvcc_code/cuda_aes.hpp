@@ -267,7 +267,7 @@ static __constant__ uint32_t d_t_fn[1024] =
 		0x82c34141U, 0x29b09999U, 0x5a772d2dU, 0x1e110f0fU,
 		0x7bcbb0b0U, 0xa8fc5454U, 0x6dd6bbbbU, 0x2c3a1616U};
 
-#define t_fn32(x) (sharedMemory[(x) * 32])
+#define t_fn32(x) (sharedMemory[(x) * 16])
 #define t_fn0(x) (sharedMemory[(x)])
 #define t_fn1(x) (sharedMemory[256 + (x)])
 #define t_fn2(x) (sharedMemory[512 + (x)])
@@ -329,8 +329,8 @@ __device__ __forceinline__ static void cn_aes_gpu_init(uint32_t* sharedMemory)
 
 __device__ __forceinline__ static void cn_aes_gpu_init32(uint32_t* sharedMemory)
 {
-	for(int i = threadIdx.x; i < 256 * 32; i += blockDim.x)
-		sharedMemory[i] = d_t_fn[i/32];
+	for(int i = threadIdx.x; i < 256 * 16; i += blockDim.x)
+		sharedMemory[i] = d_t_fn[i/16];
 }
 
 __device__ __forceinline__ static void cn_aes_gpu_init_half(uint32_t* sharedMemory)
