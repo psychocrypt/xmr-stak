@@ -267,7 +267,17 @@ static __constant__ uint32_t d_t_fn[1024] =
 		0x82c34141U, 0x29b09999U, 0x5a772d2dU, 0x1e110f0fU,
 		0x7bcbb0b0U, 0xa8fc5454U, 0x6dd6bbbbU, 0x2c3a1616U};
 
-#define t_fn32(x) (sharedMemory[(x) * 16])
+#define OFF32_0(x) __byte_perm(x, 0u, 0x4440)
+#define OFF32_1(x) __byte_perm(x, 0u, 0x4441)
+#define OFF32_2(x) __byte_perm(x, 0u, 0x4442)
+#define OFF32_3(x) __byte_perm(x, 0u, 0x4443)
+
+#define RROTL321(x, n) __byte_perm(x, x, 0x2103)
+#define RROTL322(x, n) __byte_perm(x, x, 0x1032)
+#define RROTL323(x, n) __byte_perm(x, x, 0x0321)
+/*__byte_perm(x, 0x03, 0x5543)*/
+
+#define t_fn32(x) (sharedMemory[(x) * 32])
 #define t_fn0(x) (sharedMemory[(x)])
 #define t_fn1(x) (sharedMemory[256 + (x)])
 #define t_fn2(x) (sharedMemory[512 + (x)])
@@ -280,10 +290,10 @@ static __constant__ uint32_t d_t_fn[1024] =
 	y[3] = (k)[3] ^ (t_fn0(x[3] & 0xff) ^ t_fn1((x[0] >> 8) & 0xff) ^ t_fn2((x[1] >> 16) & 0xff) ^ t_fn3((x[2] >> 24)));
 
 #define round32(dummy, a, b, k)                                                                                            \
-	a.x = (k)[0] ^ (t_fn32(b.x & 0xff) ^ ROTL32(t_fn32((b.y >> 8) & 0xff),8) ^ ROTL32(t_fn32((b.z >> 16) & 0xff),16) ^ ROTL32(t_fn32((b.w >> 24)),24)); \
-	a.y = (k)[1] ^ (t_fn32(b.y & 0xff) ^ ROTL32(t_fn32((b.z >> 8) & 0xff),8) ^ ROTL32(t_fn32((b.w >> 16) & 0xff),16) ^ ROTL32(t_fn32((b.x >> 24)),24)); \
-	a.z = (k)[2] ^ (t_fn32(b.z & 0xff) ^ ROTL32(t_fn32((b.w >> 8) & 0xff),8) ^ ROTL32(t_fn32((b.x >> 16) & 0xff),16) ^ ROTL32(t_fn32((b.y >> 24)),24)); \
-	a.w = (k)[3] ^ (t_fn32(b.w & 0xff) ^ ROTL32(t_fn32((b.x >> 8) & 0xff),8) ^ ROTL32(t_fn32((b.y >> 16) & 0xff),16) ^ ROTL32(t_fn32((b.z >> 24)),24));
+	a.x = (k)[0] ^ (t_fn32(OFF32_0(b.x)) ^ RROTL321(t_fn32(OFF32_1(b.x)),8) ^ RROTL322(t_fn32(OFF32_2(b.x)),16) ^ RROTL323(t_fn32(OFF32_3(b.x)),24)); \
+	a.y = (k)[1] ^ (t_fn32(OFF32_0(b.y)) ^ RROTL321(t_fn32(OFF32_1(b.y)),8) ^ RROTL322(t_fn32(OFF32_2(b.y)),16) ^ RROTL323(t_fn32(OFF32_3(b.y)),24)); \
+	a.z = (k)[2] ^ (t_fn32(OFF32_0(b.z)) ^ RROTL321(t_fn32(OFF32_1(b.z)),8) ^ RROTL322(t_fn32(OFF32_2(b.z)),16) ^ RROTL323(t_fn32(OFF32_3(b.z)),24)); \
+	a.w = (k)[3] ^ (t_fn32(OFF32_0(b.w)) ^ RROTL321(t_fn32(OFF32_1(b.w)),8) ^ RROTL322(t_fn32(OFF32_2(b.w)),16) ^ RROTL323(t_fn32(OFF32_3(b.w)),24));
 
 __device__ __forceinline__ static void cn_aes_single_round(uint32_t* __restrict__ sharedMemory, const uint32_t* __restrict__ in, uint32_t* __restrict__ out, const uint32_t* __restrict__ expandedKey)
 {
@@ -329,8 +339,8 @@ __device__ __forceinline__ static void cn_aes_gpu_init(uint32_t* sharedMemory)
 
 __device__ __forceinline__ static void cn_aes_gpu_init32(uint32_t* sharedMemory)
 {
-	for(int i = threadIdx.x; i < 256 * 16; i += blockDim.x)
-		sharedMemory[i] = d_t_fn[i/16];
+	for(int i = threadIdx.x; i < 256 * 32; i += blockDim.x)
+		sharedMemory[i] = d_t_fn[i/32];
 }
 
 __device__ __forceinline__ static void cn_aes_gpu_init_half(uint32_t* sharedMemory)
