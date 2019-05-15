@@ -761,8 +761,10 @@ __global__ void cryptonight_core_gpu_phase3(
 {
 	__shared__ uint32_t sharedMemoryX[256 * 32];
 
-	const int twidx = threadIdx.x % 32;
-	uint32_t* sharedMemory = sharedMemoryX + twidx;
+	/* avoid that the compiler is later in the aes round optimizing `sharedMemory[ x * 128 ]` to `sharedMemoryX + x * 128 + twidx`*/
+	const int twidx = (threadIdx.x * 4) % 128;
+	// this is equivalent to `(uint32_t*)sharedMemoryX + twidx;` where `twidx` is [0;32)
+	char* sharedMemory = (char*)sharedMemoryX + twidx;
 
 	cn_aes_gpu_init32(sharedMemoryX);
 	__syncthreads();
@@ -779,7 +781,7 @@ __global__ void cryptonight_core_gpu_phase3(
 		return;
 
 	uint32_t key[40], text[4];
-	#pragma unroll 20
+	#pragma unroll 10
 	for(int j = 0; j < 10; ++j)
 		((ulonglong4*)key)[j] = ((ulonglong4*)(d_ctx_key2 + thread * 40))[j];
 	//MEMCPY8(key, d_ctx_key2 + thread * 40, 20);
@@ -802,7 +804,7 @@ __global__ void cryptonight_core_gpu_phase3(
 		for(int j = 0; j < 2; ++j)
 			((uint64_t*)(text))[j] ^= ((uint64_t*)(tmp))[j];
 
-		((uint4*)text)[0] = cn_aes_pseudo_round_mut32(sharedMemory, ((uint4*)text)[0], key);
+		((uint4*)text)[0] = cn_aes_pseudo_round_mut32((uint32_t*)sharedMemory, ((uint4*)text)[0], (uint4*)key);
 
 		if(ALGO == cryptonight_gpu || ALGO == cryptonight_heavy || ALGO == cryptonight_haven ||
 			ALGO == cryptonight_bittube2 || ALGO == cryptonight_superfast)
@@ -1116,7 +1118,7 @@ void cryptonight_core_cpu_hash(nvid_ctx* ctx, const xmrstak_algo& miner_algo, ui
 	cuda_hash_fn selected_function = func_table[((miner_algo - 1u) << 1) | digit.to_ulong()];
 	selected_function(ctx, startNonce, miner_algo);
 
-#if 1
+#if 0
 	static int x=0;
 	x++;
 	if(x>=4)
