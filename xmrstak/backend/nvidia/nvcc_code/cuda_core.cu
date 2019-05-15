@@ -757,7 +757,7 @@ __launch_bounds__(XMR_STAK_THREADS * 4)
 template <xmrstak_algo_id ALGO>
 __global__ void cryptonight_core_gpu_phase3(
 	const uint32_t ITERATIONS, const size_t MEMORY,
-	int threads, int bfactor, int partidx, const uint32_t* const __restrict__ long_state, const uint32_t* const __restrict__ d_ctx_state, uint32_t* __restrict__ d_ctx_key2)
+	int threads, int bfactor, int partidx, const uint32_t* const long_stateIn, const uint32_t* const __restrict__ d_ctx_stateIn, uint32_t* __restrict__ d_ctx_key2)
 {
 	__shared__ uint32_t sharedMemoryX[256 * 32];
 
@@ -777,6 +777,8 @@ __global__ void cryptonight_core_gpu_phase3(
 	const int start = (partidx % (1 << bfactor)) * batchsize;
 	const int end = start + batchsize;
 
+	const uint32_t* const long_state = long_stateIn + ((IndexType)thread * MEMORY) + sub;
+
 	if(thread >= threads)
 		return;
 
@@ -785,7 +787,12 @@ __global__ void cryptonight_core_gpu_phase3(
 	for(int j = 0; j < 10; ++j)
 		((ulonglong4*)key)[j] = ((ulonglong4*)(d_ctx_key2 + thread * 40))[j];
 	//MEMCPY8(key, d_ctx_key2 + thread * 40, 20);
-	MEMCPY8(text, d_ctx_state + thread * 50 + sub + 16, 2);
+
+	uint64_t* d_ctx_state = (uint64_t*)(d_ctx_stateIn + thread * 50 + sub + 16);
+	#pragma unroll 2
+	for(int j = 0; j < 2; ++j)
+		((uint64_t*)text)[j] = loadGlobal64<uint64_t>(d_ctx_state + j);
+	//MEMCPY8(text, d_ctx_state + thread * 50 + sub + 16, 2);
 
 	__syncthreads();
 
@@ -796,13 +803,13 @@ __global__ void cryptonight_core_gpu_phase3(
 	volatile uint32_t* sPtr = NULL;
 #endif
 
-	uint32_t tmp[4];
+	//uint32_t tmp[4];
 	for(int i = start; i < end; i += 32)
 	{
-		((ulonglong2*)(tmp))[0] =  ((ulonglong2*)(long_state + ((IndexType)thread * MEMORY) + (sub + i)))[0];
+		//((ulonglong2*)(tmp))[0] =  ((ulonglong2*)(long_state + ((IndexType)thread * MEMORY) + (sub + i)))[];
 		#pragma unroll 2
 		for(int j = 0; j < 2; ++j)
-			((uint64_t*)(text))[j] ^= ((uint64_t*)(tmp))[j];
+			((uint64_t*)(text))[j] ^= loadGlobal64<uint64_t>(((uint64_t*)(long_state + i)) + j);
 
 		((uint4*)text)[0] = cn_aes_pseudo_round_mut32((uint32_t*)sharedMemory, ((uint4*)text)[0], (uint4*)key);
 
@@ -815,7 +822,10 @@ __global__ void cryptonight_core_gpu_phase3(
 		}
 	}
 
-	MEMCPY8(d_ctx_state + thread * 50 + sub + 16, text, 2);
+	#pragma unroll 2
+	for(int j = 0; j < 2; ++j)
+		storeGlobal64<uint64_t>(d_ctx_state + j, ((uint64_t*)text)[j]);
+	//MEMCPY8(d_ctx_state + thread * 50 + sub + 16, text, 2);
 }
 
 template <xmrstak_algo_id ALGO, uint32_t MEM_MODE>
@@ -1118,7 +1128,7 @@ void cryptonight_core_cpu_hash(nvid_ctx* ctx, const xmrstak_algo& miner_algo, ui
 	cuda_hash_fn selected_function = func_table[((miner_algo - 1u) << 1) | digit.to_ulong()];
 	selected_function(ctx, startNonce, miner_algo);
 
-#if 0
+#if 1
 	static int x=0;
 	x++;
 	if(x>=4)
