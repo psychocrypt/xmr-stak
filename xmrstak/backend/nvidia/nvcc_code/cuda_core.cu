@@ -757,7 +757,7 @@ __launch_bounds__(XMR_STAK_THREADS * 4)
 template <xmrstak_algo_id ALGO>
 __global__ void cryptonight_core_gpu_phase3(
 	const uint32_t ITERATIONS, const size_t MEMORY,
-	int threads, int bfactor, int partidx, const uint32_t* const long_stateIn, const uint32_t* const __restrict__ d_ctx_stateIn, uint32_t* __restrict__ d_ctx_key2)
+	int threads, int bfactor, int partidx, uint32_t* long_stateIn, const uint32_t* const __restrict__ d_ctx_stateIn, uint32_t* __restrict__ d_ctx_key2)
 {
 	__shared__ uint32_t sharedMemoryX[256 * 32];
 
@@ -803,22 +803,26 @@ __global__ void cryptonight_core_gpu_phase3(
 	volatile uint32_t* sPtr = NULL;
 #endif
 
-	//uint32_t tmp[4];
 	for(int i = start; i < end; i += 32)
 	{
-		//((ulonglong2*)(tmp))[0] =  ((ulonglong2*)(long_state + ((IndexType)thread * MEMORY) + (sub + i)))[];
-		#pragma unroll 2
-		for(int j = 0; j < 2; ++j)
-			((uint64_t*)(text))[j] ^= loadGlobal64<uint64_t>(((uint64_t*)(long_state + i)) + j);
+		uint32_t tmp[4];
+		((ulonglong2*)(tmp))[0] =  ((ulonglong2*)(long_state + i))[0];
+		#pragma unroll 4
+		for(int j = 0; j < 4; ++j)
+			text[j] ^= tmp[j];
 
 		((uint4*)text)[0] = cn_aes_pseudo_round_mut32((uint32_t*)sharedMemory, ((uint4*)text)[0], (uint4*)key);
 
 		if(ALGO == cryptonight_gpu || ALGO == cryptonight_heavy || ALGO == cryptonight_haven ||
 			ALGO == cryptonight_bittube2 || ALGO == cryptonight_superfast)
 		{
+			uint32_t tmp[4];
 			#pragma unroll 4
 			for(int j = 0; j < 4; ++j)
-				text[j] ^= shuffle<8>(sPtr, subv, text[j], (subv + 1) & 7);
+				tmp[j] = shuffle<8>(sPtr, subv, text[j], (subv + 1) & 7);
+			#pragma unroll 4
+			for(int j = 0; j < 4; ++j)
+				text[j] ^= tmp[j];
 		}
 	}
 
@@ -954,9 +958,9 @@ void cryptonight_core_gpu_hash(nvid_ctx* ctx, uint32_t nonce, const xmrstak_algo
 	for(int i = 0; i < roundsPhase3; i++)
 	{
 		CUDA_CHECK_KERNEL(ctx->device_id, cryptonight_core_gpu_phase3<ALGO><<<
-											  (grid.x + 3) / 4,
-											  block8.x * 4,
-											  4  * block8.x * sizeof(uint32_t) * static_cast<int>(ctx->device_arch[0] < 3)>>>(
+											  (grid.x + 1) / 2,
+											  block8.x * 2,
+											  2  * block8.x * sizeof(uint32_t) * static_cast<int>(ctx->device_arch[0] < 3)>>>(
 											  ITERATIONS,
 											  MEM,
 											  ctx->device_blocks * ctx->device_threads,
@@ -1128,7 +1132,7 @@ void cryptonight_core_cpu_hash(nvid_ctx* ctx, const xmrstak_algo& miner_algo, ui
 	cuda_hash_fn selected_function = func_table[((miner_algo - 1u) << 1) | digit.to_ulong()];
 	selected_function(ctx, startNonce, miner_algo);
 
-#if 1
+#if 0
 	static int x=0;
 	x++;
 	if(x>=4)
