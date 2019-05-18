@@ -394,7 +394,7 @@ __forceinline__ __device__ void sync()
 struct SharedMemChunk
 {
 	__m128i out[16];
-	__m128 va[16];
+	__m128 va[17];
 };
 
 __launch_bounds__(128, 8)

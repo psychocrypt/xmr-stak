@@ -995,7 +995,7 @@ void cryptonight_core_gpu_hash_gpu(nvid_ctx* ctx, uint32_t nonce, const xmrstak_
 		CUDA_CHECK_KERNEL(
 			ctx->device_id,
 			// 36 x 16byte x numThreads
-			xmrstak::nvidia::cryptonight_core_gpu_phase2_gpu<<<ctx->device_blocks, ctx->device_threads * 16, 32 * 16 * ctx->device_threads>>>(
+			xmrstak::nvidia::cryptonight_core_gpu_phase2_gpu<<<ctx->device_blocks, ctx->device_threads * 16, 33 * 16 * ctx->device_threads>>>(
 				ITERATIONS,
 				MEM,
 				MASK,
