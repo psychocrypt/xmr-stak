@@ -79,63 +79,6 @@ __device__ __forceinline__ uint64_t cuda_mul128(uint64_t multiplier, uint64_t mu
 	return (multiplier * multiplicand);
 }
 
-template <typename T>
-__device__ __forceinline__ T loadGlobal64(T* const addr)
-{
-#if(__CUDA_ARCH__ < 700)
-	T x;
-	asm volatile("ld.global.cg.u64 %0, [%1];"
-				 : "=l"(x)
-				 : "l"(addr));
-	return x;
-#else
-	return *addr;
-#endif
-}
-
-template <typename T>
-__device__ __forceinline__ T loadGlobal32(T* const addr)
-{
-#if(__CUDA_ARCH__ < 700)
-	T x;
-	asm volatile("ld.global.cg.u32 %0, [%1];"
-				 : "=r"(x)
-				 : "l"(addr));
-	return x;
-#else
-	return *addr;
-#endif
-}
-
-template <typename T>
-__device__ __forceinline__ void storeGlobal32(T* addr, T const& val)
-{
-#if(__CUDA_ARCH__ < 700)
-	asm volatile("st.global.cg.u32 [%0], %1;"
-				 :
-				 : "l"(addr), "r"(val));
-#else
-	*addr = val;
-#endif
-}
-
-template <typename T>
-__device__ __forceinline__ void storeGlobal64(T* addr, T const& val)
-{
-#if(__CUDA_ARCH__ < 700)
-	asm volatile("st.global.cg.u64 [%0], %1;"
-				 :
-				 : "l"(addr), "l"(val));
-#else
-	*addr = val;
-#endif
-}
-
-__device__ __forceinline__ uint32_t rotate16(const uint32_t n)
-{
-	return (n >> 16u) | (n << 16u);
-}
-
 __global__ void cryptonight_core_gpu_phase1(
 	const uint32_t ITERATIONS, const size_t MEMORY,
 	int threads, int bfactor, int partidx, uint32_t* __restrict__ long_state, uint32_t* __restrict__ ctx_state2, uint32_t* __restrict__ ctx_key1)
@@ -1132,7 +1075,7 @@ void cryptonight_core_cpu_hash(nvid_ctx* ctx, const xmrstak_algo& miner_algo, ui
 	cuda_hash_fn selected_function = func_table[((miner_algo - 1u) << 1) | digit.to_ulong()];
 	selected_function(ctx, startNonce, miner_algo);
 
-#if 0
+#if 1
 	static int x=0;
 	x++;
 	if(x>=4)

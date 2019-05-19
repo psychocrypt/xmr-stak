@@ -267,15 +267,15 @@ static __constant__ uint32_t d_t_fn[1024] =
 		0x82c34141U, 0x29b09999U, 0x5a772d2dU, 0x1e110f0fU,
 		0x7bcbb0b0U, 0xa8fc5454U, 0x6dd6bbbbU, 0x2c3a1616U};
 
-#define OFF32_0(x) __byte_perm(x, 0u, 0x4440)
-#define OFF32_1(x) __byte_perm(x, 0u, 0x4441)
-#define OFF32_2(x) __byte_perm(x, 0u, 0x4442)
-#define OFF32_3(x) __byte_perm(x, 0u, 0x4443)
 
-#define RROTL321(x, n) __byte_perm(x, x, 0x2103)
-#define RROTL322(x, n) __byte_perm(x, x, 0x1032)
-#define RROTL323(x, n) __byte_perm(x, x, 0x0321)
-/*__byte_perm(x, 0x03, 0x5543)*/
+__device__ __forceinline__ uint32_t rotate16(const uint32_t value)
+{
+#if __CUDA_ARCH__ >= 500
+	return ROTL32_16(value);
+#else
+	return (value >> 16u) | (value << 16u);
+#endif
+}
 
 #define t_fn32(x) (sharedMemory[(x) * 32])
 #define t_fn0(x) (sharedMemory[(x)])
@@ -292,18 +292,18 @@ static __constant__ uint32_t d_t_fn[1024] =
 
 __device__ __forceinline__ static uint4 round32(const uint32_t* __restrict__ sharedMemory, const uint4& b, uint4 a)
 {                                                                                          \
-	a.x ^= t_fn32(OFF32_0(b.x));
-	a.y ^= t_fn32(OFF32_0(b.y));
-	a.z ^= t_fn32(OFF32_0(b.z));
-	a.w ^= t_fn32(OFF32_0(b.w));
-	a.x ^= RROTL321(t_fn32(OFF32_1(b.y)),8);
-	a.y ^= RROTL321(t_fn32(OFF32_1(b.z)),8);
-	a.z ^= RROTL321(t_fn32(OFF32_1(b.w)),8);
-	a.w ^= RROTL321(t_fn32(OFF32_1(b.x)),8);
-	a.x ^= RROTL322(t_fn32(OFF32_2(b.z)),16) ^ RROTL323(t_fn32(OFF32_3(b.w)),24);
-	a.y ^= RROTL322(t_fn32(OFF32_2(b.w)),16) ^ RROTL323(t_fn32(OFF32_3(b.x)),24);
-	a.z ^= RROTL322(t_fn32(OFF32_2(b.x)),16) ^ RROTL323(t_fn32(OFF32_3(b.y)),24);
-	a.w ^= RROTL322(t_fn32(OFF32_2(b.y)),16) ^ RROTL323(t_fn32(OFF32_3(b.z)),24);
+	a.x ^= t_fn32(BYTE_0(b.x));
+	a.y ^= t_fn32(BYTE_0(b.y));
+	a.z ^= t_fn32(BYTE_0(b.z));
+	a.w ^= t_fn32(BYTE_0(b.w));
+	a.x ^= ROTL32_8(t_fn32(BYTE_1(b.y)));
+	a.y ^= ROTL32_8(t_fn32(BYTE_1(b.z)));
+	a.z ^= ROTL32_8(t_fn32(BYTE_1(b.w)));
+	a.w ^= ROTL32_8(t_fn32(BYTE_1(b.x)));
+	a.x ^= ROTL32_16(t_fn32(BYTE_2(b.z))) ^ ROTL32_24(t_fn32(BYTE_3(b.w)));
+	a.y ^= ROTL32_16(t_fn32(BYTE_2(b.w))) ^ ROTL32_24(t_fn32(BYTE_3(b.x)));
+	a.z ^= ROTL32_16(t_fn32(BYTE_2(b.x))) ^ ROTL32_24(t_fn32(BYTE_3(b.y)));
+	a.w ^= ROTL32_16(t_fn32(BYTE_2(b.y))) ^ ROTL32_24(t_fn32(BYTE_3(b.z)));
 	return a;
 }
 
