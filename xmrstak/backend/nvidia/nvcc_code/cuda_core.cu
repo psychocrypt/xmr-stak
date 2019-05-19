@@ -301,8 +301,8 @@ __launch_bounds__(XMR_STAK_THREADS * 2)
 		const u64 cx2 = myChunks[idx1 + ((sub + 1) & 1)];
 
 		u64 cx_aes = ax0 ^ u64(
-							   t_fn0(cx.x & 0xff) ^ t_fn1((cx.y >> 8) & 0xff) ^ rotate16(t_fn0((cx2.x >> 16) & 0xff) ^ t_fn1((cx2.y >> 24))),
-							   t_fn0(cx.y & 0xff) ^ t_fn1((cx2.x >> 8) & 0xff) ^ rotate16(t_fn0((cx2.y >> 16) & 0xff) ^ t_fn1((cx.x >> 24))));
+							   t_fn0(BYTE_0(cx.x)) ^ t_fn1(BYTE_1(cx.y)) ^ ROTL32_16(t_fn0(BYTE_2(cx2.x)) ^ t_fn1(BYTE_3(cx2.y >> 24))),
+							   t_fn0(BYTE_0(cx.y)) ^ t_fn1(BYTE_1(cx2.x)) ^ ROTL32_16(t_fn0(BYTE_2(cx2.y)) ^ t_fn1(BYTE_3(cx.x >> 24))));
 
 		if(ALGO == cryptonight_monero_v8)
 		{
@@ -557,10 +557,10 @@ __launch_bounds__(XMR_STAK_THREADS * 4)
 					if(i == sub)
 					{
 						d[x] = a ^
-							   t_fn0(k[0] & 0xff) ^
-							   t_fn1((k[1] >> 8) & 0xff) ^
-							   t_fn2((k[2] >> 16) & 0xff) ^
-							   t_fn3((k[3] >> 24));
+							   t_fn0(BYTE_0(k[0])) ^
+							   t_fn1(BYTE_1(k[1])) ^
+							   t_fn2(BYTE_2(k[2])) ^
+							   t_fn3(BYTE_3(k[3]));
 					}
 					// the last shuffle is not needed
 					if(i != 3)
@@ -595,10 +595,10 @@ __launch_bounds__(XMR_STAK_THREADS * 4)
 				const uint32_t x_2 = shuffle<4>(sPtr, sub, x_0, sub + 2);
 				const uint32_t x_3 = shuffle<4>(sPtr, sub, x_0, sub + 3);
 				d[x] = a ^
-					   t_fn0(x_0 & 0xff) ^
-					   t_fn1((x_1 >> 8) & 0xff) ^
-					   t_fn2((x_2 >> 16) & 0xff) ^
-					   t_fn3((x_3 >> 24));
+					   t_fn0(BYTE_0(x_0)) ^
+					   t_fn1(BYTE_1(x_1)) ^
+					   t_fn2(BYTE_2(x_2)) ^
+					   t_fn3(BYTE_3(x_3));
 			}
 
 			//XOR_BLOCKS_DST(c, b, &long_state[j]);

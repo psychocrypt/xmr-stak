@@ -267,27 +267,17 @@ static __constant__ uint32_t d_t_fn[1024] =
 		0x82c34141U, 0x29b09999U, 0x5a772d2dU, 0x1e110f0fU,
 		0x7bcbb0b0U, 0xa8fc5454U, 0x6dd6bbbbU, 0x2c3a1616U};
 
-
-__device__ __forceinline__ uint32_t rotate16(const uint32_t value)
-{
-#if __CUDA_ARCH__ >= 500
-	return ROTL32_16(value);
-#else
-	return (value >> 16u) | (value << 16u);
-#endif
-}
-
 #define t_fn32(x) (sharedMemory[(x) * 32])
 #define t_fn0(x) (sharedMemory[(x)])
 #define t_fn1(x) (sharedMemory[256 + (x)])
 #define t_fn2(x) (sharedMemory[512 + (x)])
 #define t_fn3(x) (sharedMemory[768 + (x)])
 
-#define round(dummy, y, x, k)                                                                                            \
-	y[0] = (k)[0] ^ (t_fn0(x[0] & 0xff) ^ t_fn1((x[1] >> 8) & 0xff) ^ t_fn2((x[2] >> 16) & 0xff) ^ t_fn3((x[3] >> 24))); \
-	y[1] = (k)[1] ^ (t_fn0(x[1] & 0xff) ^ t_fn1((x[2] >> 8) & 0xff) ^ t_fn2((x[3] >> 16) & 0xff) ^ t_fn3((x[0] >> 24))); \
-	y[2] = (k)[2] ^ (t_fn0(x[2] & 0xff) ^ t_fn1((x[3] >> 8) & 0xff) ^ t_fn2((x[0] >> 16) & 0xff) ^ t_fn3((x[1] >> 24))); \
-	y[3] = (k)[3] ^ (t_fn0(x[3] & 0xff) ^ t_fn1((x[0] >> 8) & 0xff) ^ t_fn2((x[1] >> 16) & 0xff) ^ t_fn3((x[2] >> 24)));
+#define round(dummy, y, x, k)                                                                              \
+	y[0] = (k)[0] ^ t_fn0(BYTE_0(x[0])) ^ t_fn1(BYTE_1(x[1])) ^ t_fn2(BYTE_2(x[2])) ^ t_fn3(BYTE_3(x[3])); \
+	y[1] = (k)[1] ^ t_fn0(BYTE_0(x[1])) ^ t_fn1(BYTE_1(x[2])) ^ t_fn2(BYTE_2(x[3])) ^ t_fn3(BYTE_3(x[0])); \
+	y[2] = (k)[2] ^ t_fn0(BYTE_0(x[2])) ^ t_fn1(BYTE_1(x[3])) ^ t_fn2(BYTE_2(x[0])) ^ t_fn3(BYTE_3(x[1])); \
+	y[3] = (k)[3] ^ t_fn0(BYTE_0(x[3])) ^ t_fn1(BYTE_1(x[0])) ^ t_fn2(BYTE_2(x[1])) ^ t_fn3(BYTE_3(x[2]));
 
 
 __device__ __forceinline__ static uint4 round32(const uint32_t* __restrict__ sharedMemory, const uint4& b, uint4 a)

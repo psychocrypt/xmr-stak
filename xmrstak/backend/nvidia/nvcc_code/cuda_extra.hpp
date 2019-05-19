@@ -58,14 +58,14 @@ __forceinline__ __device__ uint64_t cuda_ROTL64(const uint64_t value, const int 
 #	define ROTL32_16(x) __byte_perm(x, x, 0x1032)
 #	define ROTL32_24(x) __byte_perm(x, x, 0x0321)
 #else
-#	define BYTE_0(x) (((x)[1]      ) & 0xff)
-#	define BYTE_1(x) (((x)[1] >>  8) & 0xff)
-#	define BYTE_2(x) (((x)[1] >> 16) & 0xff)
-#	define BYTE_3(x) (((x)[1] >> 24))
+#	define BYTE_0(x) (((x)      ) & 0xff)
+#	define BYTE_1(x) (((x) >>  8) & 0xff)
+#	define BYTE_2(x) (((x) >> 16) & 0xff)
+#	define BYTE_3(x) (((x) >> 24))
 
-#	define ROTL32_8(x)  ROTL32(x,8)
-#	define ROTL32_16(x) ROTL32(x,16)
-#	define ROTL32_24(x) ROTL32(x,24)
+#	define ROTL32_8(x)  ROTL32(x, 8)
+#	define ROTL32_16(x) ROTL32(x, 16)
+#	define ROTL32_24(x) ROTL32(x, 24)
 #endif
 
 #define MEMSET8(dst, what, cnt)                          \
