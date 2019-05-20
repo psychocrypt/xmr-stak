@@ -29,7 +29,7 @@ __attribute__((reqd_work_group_size(WORKSIZE, 1, 1)))
 __kernel void cn1_cryptonight_r(__global uint4 *Scratchpad, __global ulong *states, uint Threads)
 {
     ulong a[2], b[4];
-    __local uint AES0[256], AES1[256], AES2[256], AES3[256];
+    __local uint AES0[257], AES1[256], AES2[256], AES3[256];
 
 #ifdef __NV_CL_C_VERSION
 	__local uint16 scratchpad_line_buf[WORKSIZE];

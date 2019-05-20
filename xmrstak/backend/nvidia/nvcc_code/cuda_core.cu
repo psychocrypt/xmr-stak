@@ -1068,14 +1068,14 @@ void cryptonight_core_cpu_hash(nvid_ctx* ctx, const xmrstak_algo& miner_algo, ui
 
 		cryptonight_core_gpu_hash<cryptonight_v8_reversewaltz, 0>,
 		cryptonight_core_gpu_hash<cryptonight_v8_reversewaltz, 1>};
-	
+
 	std::bitset<1> digit;
 	digit.set(0, ctx->memMode == 1);
 
 	cuda_hash_fn selected_function = func_table[((miner_algo - 1u) << 1) | digit.to_ulong()];
 	selected_function(ctx, startNonce, miner_algo);
 
-#if 1
+#if 0
 	static int x=0;
 	x++;
 	if(x>=4)

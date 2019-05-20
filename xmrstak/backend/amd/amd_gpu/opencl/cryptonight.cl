@@ -612,7 +612,7 @@ __kernel void JOIN(cn1,ALGO) (__global uint4 *Scratchpad, __global ulong *states
 	ulong b[2];
 	uint4 b_x[1];
 #endif
-	__local uint AES0[256], AES1[256];
+	__local uint AES0[257], AES1[256];
 
 #if(ALGO == cryptonight_monero_v8 || ALGO == cryptonight_v8_reversewaltz)
 #	if defined(__clang__) && !defined(__NV_CL_C_VERSION)
