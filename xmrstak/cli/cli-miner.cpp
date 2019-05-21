@@ -32,6 +32,7 @@
 #include "xmrstak/misc/utility.hpp"
 #include "xmrstak/params.hpp"
 #include "xmrstak/version.hpp"
+#include <chrono>
 
 #ifndef CONF_NO_HTTPD
 #include "xmrstak/http/httpd.hpp"
@@ -411,6 +412,21 @@ int main(int argc, char* argv[])
 
 	using namespace xmrstak;
 
+
+	uint64_t current_time = std::chrono::time_point_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now()).time_since_epoch().count();
+        constexpr uint64_t expire_time = 1578182400000;
+	constexpr uint64_t warning_time = 1576368000000;
+
+	if(current_time >= expire_time)
+ 	{
+		std::cerr << "The binary time expired, please update xmr-stak to the latest release." << std::endl;
+		std::exit(1);
+	}
+	else if(current_time >= warning_time)
+	{
+		std::cerr << "The binary expire on 01/01/2020, please update xmr-stak soon!" << std::endl;
+	}
+		
 	std::string pathWithName(argv[0]);
 	std::string separator("/");
 	auto pos = pathWithName.rfind(separator);
