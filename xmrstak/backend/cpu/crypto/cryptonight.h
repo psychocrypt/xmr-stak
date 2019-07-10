@@ -3,9 +3,11 @@
 #include <stddef.h>
 
 #include "variant4_random_math.h"
-#include <randomwow.h>
+#include <randomx.h>
 #include <mutex>
 #include <array>
+#include <atomic>
+#include <thread>
 
 #if defined _MSC_VER
 #define ABI_ATTRIBUTE
@@ -50,10 +52,10 @@ struct cryptonight_ctx
 
 struct randomX_global_ctx
 {
-	randomX_global_ctx & inst()
+	static randomX_global_ctx & inst()
 	{
 		static randomX_global_ctx instance;
-		return instance
+		return instance;
 	}
 
 	randomx_dataset* getDataset()
@@ -68,7 +70,7 @@ struct randomX_global_ctx
 		    return;
 
 		const uint32_t thread_id = m_rx_dataset_init_thread_counter++;
-		printf("Thread %u started updating RandomX dataset", thread_id);
+		printer::inst()->print_msg(LDEBUG,"Thread %u started updating RandomX dataset", thread_id);
 
 		// Wait for all threads to get here
 		do
@@ -89,10 +91,10 @@ struct randomX_global_ctx
 		// All threads update dataset
 		const uint32_t a = (randomx_dataset_item_count() * thread_id) / num_threads;
 		const uint32_t b = (randomx_dataset_item_count() * (thread_id + 1)) / num_threads;
-		printf("Thread %u start updating RandomX dataset %u %u", thread_id, a, b);
+		printer::inst()->print_msg(LDEBUG,"Thread %u start updating RandomX dataset %u %u", thread_id, a, b);
 		randomx_init_dataset(m_rx_dataset, m_rx_cache, a, b - a);
 
-		printf("Thread %u finished updating RandomX dataset", thread_id);
+		printer::inst()->print_msg(LDEBUG,"Thread %u finished updating RandomX dataset", thread_id);
 
 		// Wait for all threads to complete
 		--m_rx_dataset_init_thread_counter;
@@ -102,7 +104,7 @@ struct randomX_global_ctx
 	}
 
 private:
-	randomX_global_ctx()
+	randomX_global_ctx() : m_rx_dataset_init_thread_counter(0u)
 	{
 		randomx_dataset* dataset = randomx_alloc_dataset(RANDOMX_FLAG_LARGE_PAGES);
 		if (!dataset) {
@@ -119,7 +121,7 @@ private:
 	randomx_cache* m_rx_cache = nullptr;
 	randomx_dataset* m_rx_dataset = nullptr;
 	std::array<uint8_t, 32> m_rx_seed_hash = {0};
-	std::atomic<uint32_t> m_rx_dataset_init_thread_counter = 0u;
+	std::atomic<uint32_t> m_rx_dataset_init_thread_counter;
 };
 
 struct alloc_msg

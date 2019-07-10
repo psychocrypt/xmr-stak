@@ -19,11 +19,13 @@
 #include "cn_gpu.hpp"
 #include "cryptonight.h"
 #include "xmrstak/backend/cryptonight.hpp"
+#include "xmrstak/backend/cpu/jconf.hpp"
+#include "xmrstak/backend/cpu/cpuType.hpp"
 #include <cfenv>
 #include <memory.h>
 #include <stdio.h>
 #include <utility>
-#include <randomX.h>
+#include <randomx.h>
 
 #ifdef _WIN64
 #include <winsock2.h>
@@ -962,20 +964,13 @@ template <size_t N>
 struct Cryptonight_hash;
 
 template <size_t N>
-struct RandomX_hash;
-
-template <>
-struct RandomX_hash<1>
+struct RandomX_hash
 {
-	static constexpr size_t N = 1;
-
 	template <xmrstak_algo_id ALGO, bool SOFT_AES, bool PREFETCH>
 	static void hash(const void* input, size_t len, void* output, cryptonight_ctx** ctx, const xmrstak_algo& algo)
 	{
-		const uint32_t MASK = algo.Mask();
-		const uint32_t ITERATIONS = algo.Iter();
-		const size_t MEM = algo.Mem();
-		randomx_calculate_hash(ctx[0]->m_rx_vm, input, len, output);
+		for(size_t i = 0u; i < N; ++i)
+			randomx_calculate_hash(ctx[i]->m_rx_vm, input, len, output);
 	}
 };
 
@@ -1398,9 +1393,15 @@ struct RandomX_generator
 	{
 		if(ctx[0]->m_rx_vm == nullptr)
 		{
-			const int flags = RANDOMX_FLAG_LARGE_PAGES | RANDOMX_FLAG_HARD_AES | RANDOMX_FLAG_FULL_MEM | RANDOMX_FLAG_JIT;
+			int flags = RANDOMX_FLAG_LARGE_PAGES | RANDOMX_FLAG_FULL_MEM | RANDOMX_FLAG_JIT;
+			auto cpu_model = xmrstak::cpu::getModel();
+
+			if(cpu_model.aes)
+				flags |= RANDOMX_FLAG_HARD_AES;
+
 			for(size_t i = 0; i < N; i++)
 			{
+				printer::inst()->print_msg(LDEBUG,"randomX create vm");
 				ctx[i]->m_rx_vm = randomx_create_vm(static_cast<randomx_flags>(flags), nullptr, randomX_global_ctx::inst().getDataset());
 				if (!ctx[i]->m_rx_vm)
 					ctx[i]->m_rx_vm = randomx_create_vm(static_cast<randomx_flags>(flags - RANDOMX_FLAG_LARGE_PAGES), nullptr, randomX_global_ctx::inst().getDataset());
@@ -1410,6 +1411,7 @@ struct RandomX_generator
 		for(size_t i = 0; i < N; i++)
 			ctx[i]->last_algo = POW(randomX);
 
-		updateDataset(work.seed_hash, jconf::inst()->GetThreadCount());
+		printer::inst()->print_msg(LDEBUG,"randomX update dataset with %u threads", (uint32_t)xmrstak::cpu::jconf::inst()->GetThreadCount());
+		randomX_global_ctx::inst().updateDataset(work.seed_hash, xmrstak::cpu::jconf::inst()->GetThreadCount());
 	}
 };

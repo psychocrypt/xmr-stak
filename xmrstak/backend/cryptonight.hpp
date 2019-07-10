@@ -219,7 +219,7 @@ inline xmrstak_algo POW(xmrstak_algo_id algo_id)
 		{cryptonight_conceal, cryptonight_conceal, CN_ITER / 2, CN_MEMORY},
 		{cryptonight_r_wow, cryptonight_r_wow, CN_ITER, CN_MEMORY},
 		{cryptonight_r, cryptonight_r, CN_ITER, CN_MEMORY},
-		{cryptonight_v8_reversewaltz, cryptonight_v8_reversewaltz, CN_WALTZ_ITER, CN_MEMORY}},
+		{cryptonight_v8_reversewaltz, cryptonight_v8_reversewaltz, CN_WALTZ_ITER, CN_MEMORY},
 		{randomX, randomX, CN_ITER, CN_MEMORY}}
 	};
 

@@ -130,7 +130,7 @@ xmrstak::coin_selection coins[] = {
 	{"masari", {POW(cryptonight_v8_half)}, {POW(cryptonight_gpu)}, nullptr},
 	{"monero", {POW(cryptonight_r)}, {POW(cryptonight_r)}, "monero.miner.rocks:5551"},
 	{"qrl", {POW(cryptonight_monero)}, {POW(cryptonight_gpu)}, nullptr},
-	{"randomX", {POW(randomX)}, {POW(randomX)}, nullptr},
+	{"randomx", {POW(randomX)}, {POW(randomX)}, nullptr},
 	{"ryo", {POW(cryptonight_gpu)}, {POW(cryptonight_gpu)}, "pool.ryo-currency.com:3333"},
 	{"torque", {POW(cryptonight_v8_half)}, {POW(cryptonight_gpu)}, nullptr},
 	{"turtlecoin", {POW(cryptonight_turtle), 6u, POW(cryptonight_aeon)}, {POW(cryptonight_aeon)}, nullptr},
