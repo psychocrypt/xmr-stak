@@ -23,6 +23,7 @@
 #include <memory.h>
 #include <stdio.h>
 #include <utility>
+#include <randomX.h>
 
 #ifdef _WIN64
 #include <winsock2.h>
@@ -960,6 +961,24 @@ inline void cryptonight_conceal_tweak(__m128i& cx, __m128& conc_var)
 template <size_t N>
 struct Cryptonight_hash;
 
+template <size_t N>
+struct RandomX_hash;
+
+template <>
+struct RandomX_hash<1>
+{
+	static constexpr size_t N = 1;
+
+	template <xmrstak_algo_id ALGO, bool SOFT_AES, bool PREFETCH>
+	static void hash(const void* input, size_t len, void* output, cryptonight_ctx** ctx, const xmrstak_algo& algo)
+	{
+		const uint32_t MASK = algo.Mask();
+		const uint32_t ITERATIONS = algo.Iter();
+		const size_t MEM = algo.Mem();
+		randomx_calculate_hash(ctx[0]->m_rx_vm, input, len, output);
+	}
+};
+
 template <>
 struct Cryptonight_hash<1>
 {
@@ -1368,5 +1387,29 @@ struct Cryptonight_R_generator
 			ctx[i]->loop_fn = ctx[0]->loop_fn;
 			ctx[i]->hash_fn = ctx[0]->hash_fn;
 		}
+	}
+};
+
+template <size_t N>
+struct RandomX_generator
+{
+	template <xmrstak_algo_id ALGO>
+	static void cn_on_new_job(const xmrstak::miner_work& work, cryptonight_ctx** ctx)
+	{
+		if(ctx[0]->m_rx_vm == nullptr)
+		{
+			const int flags = RANDOMX_FLAG_LARGE_PAGES | RANDOMX_FLAG_HARD_AES | RANDOMX_FLAG_FULL_MEM | RANDOMX_FLAG_JIT;
+			for(size_t i = 0; i < N; i++)
+			{
+				ctx[i]->m_rx_vm = randomx_create_vm(static_cast<randomx_flags>(flags), nullptr, randomX_global_ctx::inst().getDataset());
+				if (!ctx[i]->m_rx_vm)
+					ctx[i]->m_rx_vm = randomx_create_vm(static_cast<randomx_flags>(flags - RANDOMX_FLAG_LARGE_PAGES), nullptr, randomX_global_ctx::inst().getDataset());
+			}
+		}
+
+		for(size_t i = 0; i < N; i++)
+			ctx[i]->last_algo = POW(randomX);
+
+		updateDataset(work.seed_hash, jconf::inst()->GetThreadCount());
 	}
 };

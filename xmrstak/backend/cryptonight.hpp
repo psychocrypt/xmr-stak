@@ -27,6 +27,7 @@ enum xmrstak_algo_id
 	cryptonight_r_wow = 15,
 	cryptonight_r = 16,
 	cryptonight_v8_reversewaltz = 17, //equal to cryptonight_monero_v8 but with 3/4 iterations and reversed shuffle operation
+	randomX = 18,
 
 	cryptonight_turtle = start_derived_algo_id,
 	cryptonight_v8_half = (start_derived_algo_id + 1),
@@ -41,7 +42,7 @@ enum xmrstak_algo_id
  */
 inline std::string get_algo_name(xmrstak_algo_id algo_id)
 {
-	static std::array<std::string, 18> base_algo_names =
+	static std::array<std::string, 19> base_algo_names =
 		{{
 			"invalid_algo",
 			"cryptonight",
@@ -60,7 +61,8 @@ inline std::string get_algo_name(xmrstak_algo_id algo_id)
 			"cryptonight_conceal",
 			"cryptonight_r_wow",
 			"cryptonight_r",
-			"cryptonight_v8_reversewaltz" // used by graft
+			"cryptonight_v8_reversewaltz", // used by graft
+			"randomX"
 		}};
 
 	static std::array<std::string, 4> derived_algo_names =
@@ -200,7 +202,7 @@ constexpr uint32_t CN_DOUBLE_ITER = 0x100000;
 
 inline xmrstak_algo POW(xmrstak_algo_id algo_id)
 {
-	static std::array<xmrstak_algo, 18> pow = {{{invalid_algo, invalid_algo},
+	static std::array<xmrstak_algo, 19> pow = {{{invalid_algo, invalid_algo},
 		{cryptonight, cryptonight, CN_ITER, CN_MEMORY},
 		{cryptonight_lite, cryptonight_lite, CN_ITER / 2, CN_MEMORY / 2},
 		{cryptonight_monero, cryptonight_monero, CN_ITER, CN_MEMORY},
@@ -217,7 +219,9 @@ inline xmrstak_algo POW(xmrstak_algo_id algo_id)
 		{cryptonight_conceal, cryptonight_conceal, CN_ITER / 2, CN_MEMORY},
 		{cryptonight_r_wow, cryptonight_r_wow, CN_ITER, CN_MEMORY},
 		{cryptonight_r, cryptonight_r, CN_ITER, CN_MEMORY},
-		{cryptonight_v8_reversewaltz, cryptonight_v8_reversewaltz, CN_WALTZ_ITER, CN_MEMORY}}};
+		{cryptonight_v8_reversewaltz, cryptonight_v8_reversewaltz, CN_WALTZ_ITER, CN_MEMORY}},
+		{randomX, randomX, CN_ITER, CN_MEMORY}}
+	};
 
 	static std::array<xmrstak_algo, 4> derived_pow =
 		{{
