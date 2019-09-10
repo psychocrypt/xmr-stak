@@ -239,7 +239,7 @@ inline xmrstak_algo POW(xmrstak_algo_id algo_id)
 			{cryptonight_v8_zelerius, cryptonight_monero_v8, CN_ZELERIUS_ITER, CN_MEMORY},
 			{cryptonight_v8_double, cryptonight_monero_v8, CN_DOUBLE_ITER, CN_MEMORY},
 			{randomX_loki, randomX, CN_ITER, CN_MEMORY},
-			{randomX_wow, randomX, CN_ITER, CN_MEMORY}
+			{randomX_wow, randomX, CN_ITER, CN_MEMORY / 2}
 			// {cryptonight_derived}
 		}};
 

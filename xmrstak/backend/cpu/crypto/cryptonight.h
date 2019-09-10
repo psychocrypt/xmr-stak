@@ -60,6 +60,7 @@ struct randomX_global_ctx
 
 	randomx_dataset* getDataset()
 	{
+		printer::inst()->print_msg(LDEBUG,"getDataSet %x", m_rx_dataset);
 		return m_rx_dataset;
 	}
 
@@ -108,6 +109,7 @@ private:
 	{
 		randomx_dataset* dataset = randomx_alloc_dataset(RANDOMX_FLAG_LARGE_PAGES);
 		if (!dataset) {
+			printer::inst()->print_msg(LDEBUG,"alloc dataset");
 			dataset = randomx_alloc_dataset(RANDOMX_FLAG_DEFAULT);
 		}
 		m_rx_cache = randomx_alloc_cache(static_cast<randomx_flags>(RANDOMX_FLAG_JIT | RANDOMX_FLAG_LARGE_PAGES));
