@@ -200,7 +200,7 @@ if(CUDA_ENABLE)
             endif()
 
             # required for cryptonight_gpu (fast floating point operations are not allowed)
-            set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS} --fmad=false --prec-div=true --ftz=false")
+            #set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS} --fmad=false --prec-div=true --ftz=false")
 
             # avoid that nvcc in CUDA 8 complains about sm_20 pending removal
             if(CUDA_VERSION VERSION_EQUAL 8.0)
@@ -573,6 +573,7 @@ target_link_libraries(xmr-stak-backend xmr-stak-c xmr-stak-randomx ${CMAKE_DL_LI
 if(CUDA_FOUND)
     file(GLOB CUDASRCFILES
         "xmrstak/backend/nvidia/nvcc_code/*.cu"
+        "xmrstak/backend/nvidia/RandomX*/*.cu"
         "xmrstak/backend/nvidia/*.cpp")
 
     if(CUDA_COMPILER STREQUAL "clang")

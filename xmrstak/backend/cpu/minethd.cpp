@@ -659,6 +659,12 @@ void minethd::func_multi_selector(cryptonight_ctx** ctx, minethd::cn_on_new_job&
 	case randomX:
 		algv = 16;
 		break;
+	case randomX_loki:
+		algv = 17;
+		break;
+	case randomX_wow:
+		algv = 18;
+		break;
 	default:
 		algv = 2;
 		break;
@@ -748,7 +754,19 @@ void minethd::func_multi_selector(cryptonight_ctx** ctx, minethd::cn_on_new_job&
 		RandomX_hash<N>::template hash<randomX, false, false>,
 		RandomX_hash<N>::template hash<randomX, true, false>,
 		RandomX_hash<N>::template hash<randomX, false, true>,
-		RandomX_hash<N>::template hash<randomX, true, true>
+		RandomX_hash<N>::template hash<randomX, true, true>,
+
+		// loki
+		RandomX_hash<N>::template hash<randomX_loki, false, false>,
+		RandomX_hash<N>::template hash<randomX_loki, true, false>,
+		RandomX_hash<N>::template hash<randomX_loki, false, true>,
+		RandomX_hash<N>::template hash<randomX_loki, true, true>,
+
+		//wow
+		RandomX_hash<N>::template hash<randomX_wow, false, false>,
+		RandomX_hash<N>::template hash<randomX_wow, true, false>,
+		RandomX_hash<N>::template hash<randomX_wow, false, true>,
+		RandomX_hash<N>::template hash<randomX_wow, true, true>
 	};
 
 	std::bitset<2> digit;
