@@ -53,6 +53,10 @@ namespace randomx {
 		return allocLargePagesMemory(count);
 	}
 
+	void* LargePageAllocator::allocMemory_large(size_t count) {
+		return allocLargePagesMemory_large(count);
+	}
+
 	void LargePageAllocator::freeMemory(void* ptr, size_t count) {
 		freePagedMemory(ptr, count);
 	};

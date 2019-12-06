@@ -40,6 +40,7 @@ namespace randomx {
 
 	struct LargePageAllocator {
 		static void* allocMemory(size_t);
+		static void* allocMemory_large(size_t);
 		static void freeMemory(void*, size_t);
 	};
 

@@ -52,6 +52,15 @@ void* allocLargePagesMemory(std::size_t bytes) {
     return mem;
 }
 
+void* allocLargePagesMemory_large(std::size_t bytes) {
+    void *mem = xmrstak::VirtualMemory::allocateLargePagesMemory_large(bytes);
+    if (mem == nullptr) {
+        throw std::runtime_error("Failed to allocate large pages memory");
+    }
+
+    return mem;
+}
+
 
 void freePagedMemory(void* ptr, std::size_t bytes) {
     xmrstak::VirtualMemory::freeLargePagesMemory(ptr, bytes);
